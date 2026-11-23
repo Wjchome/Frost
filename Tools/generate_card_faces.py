@@ -114,7 +114,7 @@ def icons():
 
 
 def status_icons():
-    for name in ("spice", "overload", "ink", "weakness", "block", "bonus", "pendant"):
+    for name in ("spice", "overload", "ink", "weakness", "block", "bonus", "pendant", "barbs", "burn"):
         image = Image.new("RGBA", (64, 64))
         d = ImageDraw.Draw(image)
         if name == "spice":
@@ -139,6 +139,15 @@ def status_icons():
             d.arc((17,2,47,27), 0, 360, fill="#ffe3a1", width=6)
             d.polygon([(32,22),(51,38),(32,60),(13,38)], fill="#ffe3a1")
             d.polygon([(32,32),(40,39),(32,49),(24,39)], fill="#a36537")
+        elif name == "barbs":
+            d.polygon([(6,53),(20,19),(29,35),(34,5),(45,30),(51,17),(59,53)],
+                      fill="#f3d297")
+            d.line((10,55,57,55), fill="#fff0c6", width=5)
+        elif name == "burn":
+            d.polygon([(30,3),(47,24),(49,17),(58,38),(52,53),(40,61),(24,60),
+                       (11,51),(7,38),(14,24),(19,34),(24,21)], fill="#ff9a64")
+            d.polygon([(35,29),(43,42),(41,53),(33,57),(23,51),(22,42),(28,45)],
+                      fill="#ffe29b")
         image.save(output / f"icon_{name}.png")
 
 

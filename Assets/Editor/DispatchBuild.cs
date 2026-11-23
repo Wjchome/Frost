@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
@@ -61,6 +62,12 @@ namespace Frostline
 
             var configuredScene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
             var document = UnityEngine.Object.FindFirstObjectByType<UIDocument>();
+            var boardSettings = new SerializedObject(document.GetComponent<DispatchBoard>());
+            var campaign = boardSettings.FindProperty("configuration").objectReferenceValue as CampaignConfig
+                ?? AssetDatabase.LoadAssetAtPath<CampaignConfig>($"Assets/Resources/{CampaignConfig.ResourcePath}.asset");
+            if (campaign == null)
+                throw new InvalidOperationException("The dispatch scene requires a campaign configuration.");
+            campaign.CreateRoute(new Dictionary<string, Texture2D>());
             var serializedDocument = new SerializedObject(document);
             var panel = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelPath);
             SerializedProperty targetPanel = serializedDocument.FindProperty("m_PanelSettings");

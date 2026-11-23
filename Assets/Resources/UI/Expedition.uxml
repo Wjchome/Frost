@@ -1,6 +1,20 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
   <ui:VisualElement name="screen" class="screen">
     <ui:VisualElement name="background" class="background" picking-mode="Ignore" />
+    <ui:VisualElement name="title-screen" class="title-screen">
+      <ui:VisualElement class="title-menu">
+        <ui:Label text="FROSTLINE DISPATCH" class="title-wordmark" />
+        <ui:Label text="霜线信使" class="game-title" />
+        <ui:VisualElement class="title-rule" picking-mode="Ignore" />
+        <ui:Label text="雪原上的卡牌远征" class="title-description" />
+        <ui:Button name="start-expedition" text="开始远征" class="button primary title-start" focusable="false" />
+        <ui:VisualElement class="title-actions">
+          <ui:Button name="title-help" text="玩法说明" class="button" focusable="false" />
+          <ui:Button name="title-sound" class="button" focusable="false" />
+        </ui:VisualElement>
+        <ui:Label name="title-guide" text="开局先免费部署主角和随从。出牌推动倒计时，主角倒下即失败。Tab 查看行动顺序，B 查看牌组，空格换牌。" class="title-guide" />
+      </ui:VisualElement>
+    </ui:VisualElement>
     <ui:VisualElement name="battle-hud" class="battle-hud">
       <ui:VisualElement class="top">
         <ui:VisualElement>
@@ -15,7 +29,9 @@
           </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="top-actions">
+          <ui:Button name="inspect-deck" text="牌组 [B]" class="button top-button" focusable="false" />
           <ui:Button name="action-order" text="行动顺序 [Tab]" class="button top-button" />
+          <ui:Button name="battle-sound" class="button top-button" focusable="false" />
           <ui:Button name="restart" text="重开本战" class="button top-button" />
         </ui:VisualElement>
       </ui:VisualElement>
@@ -33,8 +49,14 @@
       </ui:VisualElement>
       <ui:VisualElement class="tray">
         <ui:VisualElement class="piles">
-          <ui:Label name="draw-count" class="pile" />
-          <ui:Label name="discard-count" class="pile" />
+          <ui:Button name="inspect-draw" class="button pile-button" focusable="false">
+            <ui:Label text="抽牌堆" class="pile-name" />
+            <ui:Label name="draw-count" class="pile-count" />
+          </ui:Button>
+          <ui:Button name="inspect-discard" class="button pile-button" focusable="false">
+            <ui:Label text="弃牌堆" class="pile-name" />
+            <ui:Label name="discard-count" class="pile-count" />
+          </ui:Button>
           <ui:Button name="recall" text="收回队员" class="button deck-button" />
         </ui:VisualElement>
         <ui:VisualElement name="hand" class="hand" />
@@ -51,7 +73,30 @@
         <ui:Label name="result-title" class="result-title" />
         <ui:Label name="result-detail" class="result-detail" />
         <ui:VisualElement name="choices" class="choices" />
-        <ui:Button name="change-loadout" text="返回主角选择" class="button change-loadout" focusable="false" />
+        <ui:VisualElement class="dialog-actions">
+          <ui:Button name="change-loadout" text="返回主角选择" class="button dialog-action" focusable="false" />
+          <ui:Button name="route-deck" text="查看牌组 [B]" class="button dialog-action" focusable="false" />
+        </ui:VisualElement>
+      </ui:VisualElement>
+    </ui:VisualElement>
+    <ui:VisualElement name="deck-overlay" class="overlay deck-overlay">
+      <ui:VisualElement class="deck-panel">
+        <ui:VisualElement class="deck-heading">
+          <ui:Label text="牌组一览" class="result-title" />
+          <ui:Button name="close-deck" text="关闭 [Esc]" class="button" focusable="false" />
+        </ui:VisualElement>
+        <ui:VisualElement class="deck-navigation">
+          <ui:Button name="deck-roster-tab" class="button deck-tab" focusable="false" />
+          <ui:Button name="deck-draw-tab" class="button deck-tab" focusable="false" />
+          <ui:Button name="deck-discard-tab" class="button deck-tab" focusable="false" />
+        </ui:VisualElement>
+        <ui:Label name="deck-summary" class="deck-summary" />
+        <ui:VisualElement class="deck-body">
+          <ui:ScrollView name="deck-scroll" class="deck-scroll" mode="Vertical">
+            <ui:VisualElement name="deck-grid" class="deck-grid" />
+          </ui:ScrollView>
+          <ui:VisualElement name="deck-detail" class="deck-detail" />
+        </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
   </ui:VisualElement>

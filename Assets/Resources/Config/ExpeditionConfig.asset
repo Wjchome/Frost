@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0215805b8dd85d589320332d588260b2, type: 3}
+  m_Name: ExpeditionConfig
+  m_EditorClassIdentifier:
+  loadouts:
+  - captain: {fileID: 11400000, guid: bb69918774955eb08d66a62a86ec14a6, type: 2}
+    deckName: "巡路牌组"
+    strategy: "把辣椒和催行哨留给能连续攻击的飞索信使。"
+    startingDeck:
+    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
+    - {fileID: 11400000, guid: 3126c636005657e8a69f6dee7d524cec, type: 2}
+    - {fileID: 11400000, guid: b82fe6c12dcd5bbd97fb1b0fd44f1496, type: 2}
+    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
+    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
+    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
+    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
+    - {fileID: 11400000, guid: 20b4a8863f46512d93cba20053e4b1bd, type: 2}
+    startingSupplies:
+    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
+    - {fileID: 11400000, guid: b92e2f75805859ec8ac8e2af0bd70761, type: 2}
+    - {fileID: 11400000, guid: 77680002053d477092816917e64a4d5f, type: 2}
+    signatureReward: {fileID: 11400000, guid: 3495a5b765fb50dbbb5a3a8866e10c3e, type: 2}
+  - captain: {fileID: 11400000, guid: ca51031f2f3d59c385b20eb84f50ecec, type: 2}
+    deckName: "过载牌组"
+    strategy: "用电荷罐和横扫叠过载，再压低目标生命引爆同排。"
+    startingDeck:
+    - {fileID: 11400000, guid: 1c1cd056e760526f9bf68806b97b383e, type: 2}
+    - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
+    - {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
+    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
+    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
+    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
+    - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
+    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
+    startingSupplies:
+    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
+    - {fileID: 11400000, guid: 1b4c63b3c96e5a28acd54604bf21d192, type: 2}
+    - {fileID: 11400000, guid: e3d6cae66d73555bbc863d22a9a7e905, type: 2}
+    signatureReward: {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
+  - captain: {fileID: 11400000, guid: 8e7e91fc601c5ea9b2c10625c583fb43, type: 2}
+    deckName: "雪球牌组"
+    strategy: "用雪球卡住行动，趁目标带雪球时打出裂霜刃。"
+    startingDeck:
+    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
+    - {fileID: 11400000, guid: 7d3a3741d8c75e62a6e14dd4bb43fe18, type: 2}
+    - {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
+    - {fileID: 11400000, guid: 3126c636005657e8a69f6dee7d524cec, type: 2}
+    - {fileID: 11400000, guid: 7d3a3741d8c75e62a6e14dd4bb43fe18, type: 2}
+    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
+    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
+    - {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
+    startingSupplies:
+    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
+    - {fileID: 11400000, guid: 8e87491b809c5d539531f57352629bc9, type: 2}
+    - {fileID: 11400000, guid: e3d6cae66d73555bbc863d22a9a7e905, type: 2}
+    signatureReward: {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
+  companions:
+  - {fileID: 11400000, guid: 1ba18876cd2657f7a54c10a1f345b125, type: 2}
+  - {fileID: 11400000, guid: 28063c2f25f45d678153db954fe4931b, type: 2}
+  - {fileID: 11400000, guid: 12869b3b5773578cbe99d458ed9e91ec, type: 2}
+  stages:
+  - title: "选择低级关卡"
+    encounters:
+    - {fileID: 11400000, guid: 127d726042a150b89c54d7bacf3114ea, type: 2}
+    - {fileID: 11400000, guid: db6734ad319b5947991427fc5a4b0099, type: 2}
+  - title: "选择高级关卡"
+    encounters:
+    - {fileID: 11400000, guid: 7639a5efa4e65bed917bb45103c1e767, type: 2}
+    - {fileID: 11400000, guid: 51314b55f1ff5ec1a5294ea4bcc8ef32, type: 2}

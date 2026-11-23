@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3aaca6811335594793ff8e856b62c3f1, type: 3}
+  m_Name: Bridge
+  m_EditorClassIdentifier:
+  displayName: "霜桥关口"
+  landscape: {fileID: 2800000, guid: 8e83ea12a6824d18b7c606391d1e605d, type: 3}
+  briefing: "增援来得更快，霜桥守机横扫施加过载。"
+  reinforcementInterval: 3
+  waves:
+  - enemies:
+    - unit: {fileID: 11400000, guid: ee11e1f53f165be98f8489d9cbb21ea8, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+      row: 2
+  - enemies:
+    - unit: {fileID: 11400000, guid: b3b2f815e50b51c897f9639c422338e8, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ee11e1f53f165be98f8489d9cbb21ea8, type: 2}
+      row: 2
+  - enemies:
+    - unit: {fileID: 11400000, guid: 911d1354924d5604ad548f83122c65f7, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+      row: 2
+  pendantReward: 0
+  rewardCards: []

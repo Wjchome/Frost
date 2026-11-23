@@ -10,19 +10,34 @@ namespace Frostline
     [RequireComponent(typeof(UIDocument))]
     public sealed class DispatchBoard : MonoBehaviour
     {
+        private enum DeckPage { Roster, Draw, Discard }
+
         private readonly Dictionary<string, Texture2D> textures = new();
         private readonly Dictionary<Position, Button> slots = new();
         private readonly List<Button> cards = new();
         private readonly Dictionary<VisualElement, (Action Click, Action Select)> draggable = new();
         private VisualElement screen, battleHud, formations, hand, overlay, dialog, choices;
+        private VisualElement background, titleScreen;
+        private Label titleGuide;
+        private Button titleSound, battleSound;
+        private readonly Dictionary<string, AudioClip> audioClips = new();
+        private AudioSource audioSource;
+        private bool showingTitle, showingGuide, soundEnabled;
         private Label locationTitle, turn, wave, waveUnits, objective, notice, hint, drawCount, discardCount;
         private Label resultEyebrow, resultTitle, resultDetail, redrawNote;
         private Button redraw, recall, restart, orderButton, changeLoadout;
+        private Button inspectDeck, inspectDraw, inspectDiscard, routeDeck, rosterTab, drawTab, discardTab;
+        private VisualElement deckOverlay, deckGrid, deckDetail;
+        private ScrollView deckScroll;
+        private Label deckSummary;
+        private DeckPage? deckPage;
+        private Button selectedDeckTile;
         private Label orderNote;
         private bool showOrder;
         private int hoveredCard = -1;
         private Position? hoveredSlot;
         private DispatchRoute route;
+        [SerializeField] private CampaignConfig configuration;
         private Expedition game;
         private Coroutine resolving;
         private BattleBeat? beat;
@@ -53,7 +68,8 @@ namespace Frostline
             battleHud = screen.Q("battle-hud");
             screen.styleSheets.Add(Resources.Load<StyleSheet>("UI/ExpeditionLayout"));
             screen.style.unityFontDefinition = FontDefinition.FromFont(Resources.Load<Font>("Fonts/FrostlineSans"));
-            Paint(screen.Q("background"), "Art/canyon");
+            background = screen.Q("background");
+            BindTitleScreen();
 
             formations = screen.Q("formations");
             hand = screen.Q("hand");
@@ -95,6 +111,7 @@ namespace Frostline
             redraw.Add(bellIcon);
             foreach (Button button in new[] { redraw, recall, restart, orderButton })
                 button.focusable = false;
+            BindDeckView();
 
             screen.RegisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
             screen.RegisterCallback<PointerMoveEvent>(OnPointerMove, TrickleDown.TrickleDown);
@@ -112,7 +129,66 @@ namespace Frostline
                 hoveredCard = -1;
                 ApplyTargets();
             });
+            showingTitle = true;
             ResetRun();
+        }
+
+        private void BindTitleScreen()
+        {
+            titleScreen = screen.Q("title-screen");
+            titleGuide = screen.Q<Label>("title-guide");
+            showingGuide = false;
+            titleSound = screen.Q<Button>("title-sound");
+            battleSound = screen.Q<Button>("battle-sound");
+            audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 0f;
+            if (FindFirstObjectByType<AudioListener>() == null)
+                gameObject.AddComponent<AudioListener>();
+            soundEnabled = PlayerPrefs.GetInt("Frostline.Sound", 1) != 0;
+            UpdateSoundButtons();
+            titleSound.clicked += ToggleSound;
+            battleSound.clicked += ToggleSound;
+            screen.Q<Button>("start-expedition").clicked += StartExpedition;
+            screen.Q<Button>("title-help").clicked += () =>
+            {
+                PlayCue("paper");
+                showingGuide = !showingGuide;
+                titleGuide.style.display = showingGuide ? DisplayStyle.Flex : DisplayStyle.None;
+            };
+        }
+
+        private void StartExpedition()
+        {
+            PlayCue("paper");
+            showingTitle = false;
+            ResetRun();
+        }
+
+        private void ToggleSound()
+        {
+            soundEnabled = !soundEnabled;
+            if (!soundEnabled)
+                audioSource.Stop();
+            PlayerPrefs.SetInt("Frostline.Sound", soundEnabled ? 1 : 0);
+            UpdateSoundButtons();
+            PlayCue("paper");
+        }
+
+        private void UpdateSoundButtons() =>
+            titleSound.text = battleSound.text = soundEnabled ? "音效 开" : "音效 关";
+
+        private void PlayCue(string cue)
+        {
+            if (!soundEnabled)
+                return;
+            if (!audioClips.TryGetValue(cue, out AudioClip clip))
+            {
+                clip = Resources.Load<AudioClip>($"Audio/{cue}");
+                audioClips.Add(cue, clip);
+            }
+            if (clip != null)
+                audioSource.PlayOneShot(clip, 0.35f);
         }
 
         private void OnDisable()
@@ -127,6 +203,12 @@ namespace Frostline
 
         private void Update()
         {
+            if (showingTitle)
+            {
+                if (Input.GetKeyDown(KeyCode.Return))
+                    StartExpedition();
+                return;
+            }
             if (ghost != null)
             {
                 float blend = 1f - Mathf.Exp(-24f * Time.unscaledDeltaTime);
@@ -137,6 +219,17 @@ namespace Frostline
                 ghost.style.rotate = new Rotate(Angle.Degrees(ghostTilt));
             }
 
+            if (deckPage.HasValue)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.B))
+                    CloseDeck();
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.B) && CanReviewDeck)
+            {
+                ShowDeck(DeckPage.Roster);
+                return;
+            }
             if (game?.Phase != BattlePhase.Planning)
                 return;
             if (Input.GetKeyDown(KeyCode.Tab) && !confirmRestart)
@@ -155,7 +248,11 @@ namespace Frostline
 
         private void ResetRun()
         {
-            route = new DispatchRoute();
+            if (configuration == null)
+                configuration = Resources.Load<CampaignConfig>(CampaignConfig.ResourcePath);
+            if (configuration == null)
+                throw new InvalidOperationException($"Missing campaign configuration at Resources/{CampaignConfig.ResourcePath}.");
+            route = configuration.CreateRoute(textures);
             LoadBattle();
         }
 
@@ -172,6 +269,7 @@ namespace Frostline
             resolving = null;
             beat = null;
             confirmRestart = false;
+            CloseDeck();
             ClearDrag();
             StopReturn();
             ClearAttackView();
@@ -184,14 +282,16 @@ namespace Frostline
 
         private void Redraw()
         {
-            if (game.CanRedraw)
-                BeginSequence(game.Redraw());
+            if (!game.CanRedraw || resolving != null || confirmRestart || deckPage.HasValue)
+                return;
+            PlayCue("bell");
+            BeginSequence(game.Redraw());
         }
 
 
         private void Recall()
         {
-            if (selectedUnit.HasValue && game.Recall(selectedUnit.Value))
+            if (!deckPage.HasValue && selectedUnit.HasValue && game.Recall(selectedUnit.Value))
             {
                 selectedUnit = null;
                 Render();
@@ -200,7 +300,7 @@ namespace Frostline
 
         private void BeginSequence(IEnumerable<BattleBeat> sequence)
         {
-            if (game.Phase != BattlePhase.Planning || resolving != null || confirmRestart)
+            if (game.Phase != BattlePhase.Planning || resolving != null || confirmRestart || deckPage.HasValue)
                 return;
 
             selectedCard = -1;
@@ -286,6 +386,12 @@ namespace Frostline
 
         private IEnumerator PlayImpact(BattleBeat action)
         {
+            PlayCue(action.Effect switch
+            {
+                BattleEffect.Attack or BattleEffect.Retaliation or BattleEffect.Burst => "impact",
+                BattleEffect.Arrival => "paper",
+                _ => "effect"
+            });
             if (action.Effect != BattleEffect.Attack)
             {
                 yield return new WaitForSecondsRealtime(action.Effect == BattleEffect.Arrival ? 0.25f : 0.32f);
@@ -354,7 +460,7 @@ namespace Frostline
 
         private void SelectCard(int index, bool toggle)
         {
-            if (game.Phase != BattlePhase.Planning)
+            if (game.Phase != BattlePhase.Planning || deckPage.HasValue)
                 return;
             selectedCard = toggle && selectedCard == index ? -1 : index;
             selectedUnit = null;
@@ -363,6 +469,8 @@ namespace Frostline
 
         private void SelectUnit(Position pos, bool toggle)
         {
+            if (deckPage.HasValue)
+                return;
             selectedCard = -1;
             selectedUnit = toggle && selectedUnit.HasValue && selectedUnit.Value.Equals(pos) ? null : pos;
             ApplyTargets();
@@ -370,7 +478,7 @@ namespace Frostline
 
         private void UseSlot(Position pos)
         {
-            if (game.Phase != BattlePhase.Planning)
+            if (game.Phase != BattlePhase.Planning || deckPage.HasValue)
                 return;
 
             if (selectedCard >= 0)
@@ -393,7 +501,14 @@ namespace Frostline
 
         private void Render()
         {
+            Paint(background, game?.Location.Landscape ?? "Art/cover");
+            titleScreen.style.display = showingTitle ? DisplayStyle.Flex : DisplayStyle.None;
             battleHud.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
+            if (showingTitle)
+            {
+                overlay.style.display = DisplayStyle.None;
+                return;
+            }
             if (game == null)
             {
                 draggable.Clear();
@@ -403,18 +518,19 @@ namespace Frostline
             bool planning = game.Phase == BattlePhase.Planning;
             locationTitle.text = game.Location.Name;
             objective.text = $"第 {route.Stage}/{route.StageCount} 战 · 卡组 {route.DeckCount} 张 · 保护{game.Captain.Name}";
-            screen.EnableInClassList("bridge", game.Location == Encounter.Bridge);
-            screen.EnableInClassList("outpost", game.Location == Encounter.Outpost);
-            screen.EnableInClassList("ridge", game.Location == Encounter.Ridge);
             turn.text = game.Opening ? "开局部署" : $"第 {game.Turn} 回合";
             wave.text = game.Wave == game.Location.WaveCount
                 ? "最终波"
+                : game.Reinforcements == 0 ? $"第 {game.Wave} 波  ·  增援等待空位"
                 : $"第 {game.Wave} 波  ·  增援 {game.Reinforcements} 拍";
             waveUnits.style.display = game.NextWave.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
-            waveUnits.text = string.Join("  +  ", game.NextWave.Select(unit => unit.Name));
+            waveUnits.text = string.Join("  +  ", game.NextWave.Select(enemy => enemy.Unit.Name));
             notice.text = game.Notice;
-            drawCount.text = $"抽牌 {game.DrawCount}";
-            discardCount.text = $"弃牌 {game.DiscardCount}";
+            drawCount.text = game.DrawCount.ToString();
+            discardCount.text = game.DiscardCount.ToString();
+            inspectDeck.SetEnabled(planning);
+            inspectDraw.SetEnabled(planning);
+            inspectDiscard.SetEnabled(planning);
             redraw.text = game.Refresh == 0 ? "免费换牌" : $"换牌  {game.Refresh}";
             redraw.SetEnabled(game.CanRedraw);
             redrawNote.text = game.Opening ? "开局部署后开启" : game.Refresh == 0 ? "空格敲铃" : "提前敲铃消耗一回合";
@@ -431,7 +547,7 @@ namespace Frostline
 
         private void ToggleOrder()
         {
-            if (game.Phase != BattlePhase.Planning || game.Opening)
+            if (game.Phase != BattlePhase.Planning || game.Opening || deckPage.HasValue)
                 return;
 
             showOrder = !showOrder;
@@ -541,6 +657,8 @@ namespace Frostline
                         mark.AddToClassList("ice-burst");
                     if (resolved.Effect is BattleEffect.Burst or BattleEffect.Status)
                         mark.AddToClassList(resolved.Effect == BattleEffect.Burst ? "overload-burst" : "status-burst");
+                    if (resolved.Effect is BattleEffect.Retaliation or BattleEffect.Burning)
+                        mark.AddToClassList(resolved.Effect == BattleEffect.Burning ? "burn-burst" : "thorns-burst");
                     if (resolved.Effect is BattleEffect.Recovery or BattleEffect.Arrival or BattleEffect.Guard)
                         mark.AddToClassList("heal-burst");
                     slot.Add(mark);
@@ -646,18 +764,20 @@ namespace Frostline
             recall.SetEnabled(canRecall);
             recall.EnableInClassList("target", canRecall);
             hint.text = game.Phase == BattlePhase.Resolving ? "结算中…" :
-                cardIndex >= 0 ? any ? CardDetails(game.Hand[cardIndex]) : "当前没有合法目标。" :
+                cardIndex >= 0 ? any ? CardDetails(game.Hand[cardIndex],
+                    hoveredSlot.HasValue && game.CanPlay(cardIndex, hoveredSlot.Value) ? current : null) : "当前没有合法目标。" :
                 selectedUnit.HasValue ? "选择己方位置换位，或拖到收回队员。换位和收回均免费。" :
                 current != null ? UnitDetails(current) :
                 game.Opening ? "将戴冠的牌部署到己方空位，部署不消耗回合。" : "悬停预览目标 · 空格敲换牌铃";
             ApplyOrder();
         }
 
-        private static string CardDetails(Card card)
+        private static string CardDetails(Card card, Unit target = null)
         {
             if (card.Unit != null)
                 return card.Description + UnitDetails(DeploymentPreview(card, leader: false));
-            return card.Description + Effects.Rule(card.Effect);
+            string preview = target != null && card.BonusDamage > 0 ? $" 本次伤害 {card.DamageAgainst(target)}。" : "";
+            return card.Description + Effects.Rule(card.Effect) + preview;
         }
 
         private static string UnitDetails(Unit unit)
@@ -676,10 +796,13 @@ namespace Frostline
                 (unit.Block > 0 ? $" · 格挡 {unit.Block}" : "") +
                 (unit.Frozen > 0 ? $" · 雪球 {unit.Frozen}" : "") +
                 (unit.Shell > 0 ? $" · 护壳 {unit.Shell}" : "") +
+                (unit.Thorns > 0 ? $" · 反伤 {unit.Thorns}" : "") +
+                (unit.Burn > 0 ? $" · 灼烧 {unit.Burn}" : "") +
                 (unit.EffectBonus > 0 ? $" · 效果 +{unit.EffectBonus}" : "");
             string pendant = unit.Pendant != Pendant.None
                 ? $" · {Pendants.Name(unit.Pendant)} {Pendants.Description(unit.Pendant)}" : "";
-            return pattern + frenzy + ability + resistance + ink + overload + buffs + pendant;
+            string growth = unit.BaseAttack > type.Power ? $" · 基础攻击 {unit.BaseAttack}" : "";
+            return pattern + frenzy + ability + resistance + ink + overload + buffs + growth + pendant;
         }
 
         private void RenderOverlay()
@@ -687,6 +810,7 @@ namespace Frostline
             bool selecting = game == null;
             bool selectingLoadout = selecting && route.Loadout == null;
             bool selectingCompanion = selecting && route.Loadout != null && route.Companion == null;
+            bool selectingSupply = selecting && route.Companion != null && route.Supply == null;
             bool finished = game?.Phase is BattlePhase.Won or BattlePhase.Lost;
             bool reward = route.CanClaimReward && !confirmRestart;
             bool equipping = route.PendingPendant != Pendant.None;
@@ -694,24 +818,27 @@ namespace Frostline
             overlay.style.display = selecting || finished || confirmRestart ? DisplayStyle.Flex : DisplayStyle.None;
             dialog.EnableInClassList("wide", shopping);
             changeLoadout.style.display = selecting && route.Stage == 1 && !selectingLoadout ? DisplayStyle.Flex : DisplayStyle.None;
+            routeDeck.style.display = (selecting || finished) && route.Companion != null && !confirmRestart
+                ? DisplayStyle.Flex : DisplayStyle.None;
             choices.Clear();
             choices.EnableInClassList("choice-grid", shopping);
-            resultEyebrow.text = selectingLoadout || selectingCompanion ? "霜线信使"
+            resultEyebrow.text = selectingLoadout || selectingCompanion || selectingSupply ? "霜线信使"
                 : shopping ? $"霜线信使   /   第 {route.Stage} 段" : game.Location.Name;
             if (selectingLoadout)
             {
                 resultTitle.text = "选择主角和牌组";
                 resultDetail.text = "主角倒下时，战斗结束。";
-                for (int i = 0; i < DispatchRoute.Loadouts.Count; i++)
+                for (int i = 0; i < route.Loadouts.Count; i++)
                 {
                     int index = i;
-                    var loadout = DispatchRoute.Loadouts[i];
+                    var loadout = route.Loadouts[i];
                     var option = AddUnitChoice(loadout.Captain, loadout.DeckName, () =>
                     {
                         if (route.ChooseLoadout(index))
                             RenderOverlay();
                     });
                     option.AddToClassList("loadout-choice");
+                    option.Add(Text(loadout.Strategy, "loadout-strategy"));
                     string contents = string.Join("、", loadout.Deck.GroupBy(card => card.Name)
                         .Select(group => group.Count() == 1 ? group.Key : $"{group.Key} ×{group.Count()}"));
                     option.Add(Text($"{loadout.Deck.Count} 张牌 · {contents}", "deck-preview"));
@@ -721,19 +848,34 @@ namespace Frostline
             {
                 resultTitle.text = "选择一名随从";
                 resultDetail.text = $"{route.Loadout.Captain.Name}会和所选随从一起随队出发，两者可在每战开局免费部署。";
-                for (int i = 0; i < DispatchRoute.Companions.Count; i++)
+                for (int i = 0; i < route.Companions.Count; i++)
                 {
                     int index = i;
-                    AddUnitChoice(DispatchRoute.Companions[i], null, () =>
+                    AddUnitChoice(route.Companions[i], null, () =>
                     {
                         if (route.ChooseCompanion(index))
                             RenderOverlay();
                     });
                 }
             }
+            else if (selectingSupply)
+            {
+                resultTitle.text = "选择出发补给";
+                resultDetail.text = $"加入一张起始牌。{route.Loadout.Strategy}";
+                var supplies = route.Loadout.Supplies;
+                for (int i = 0; i < supplies.Count; i++)
+                {
+                    int index = i;
+                    AddSupplyChoice(supplies[i], () =>
+                    {
+                        if (route.ChooseSupply(index))
+                            RenderOverlay();
+                    });
+                }
+            }
             else if (selecting)
             {
-                resultTitle.text = route.Stage == 1 ? "选择低级关卡" : "选择高级关卡";
+                resultTitle.text = route.StageTitle;
                 string party = $"{route.Loadout.Captain.Name}与{route.Companion.Name}携带 {route.DeckCount} 张卡牌。";
                 resultDetail.text = route.Stage == 1 ? party + "胜利后获得一张新牌和一枚挂坠。"
                     : party + "选择最后一战。";
@@ -750,9 +892,7 @@ namespace Frostline
                             LoadBattle();
                     });
                     var preview = Element("site-preview");
-                    Paint(preview, "Art/canyon");
-                    preview.AddToClassList(site == Encounter.Outpost ? "preview-outpost" :
-                        site == Encounter.Bridge ? "preview-bridge" : site == Encounter.Ridge ? "preview-ridge" : "preview-valley");
+                    Paint(preview, site.Landscape);
                     option.Insert(0, preview);
                 }
             }
@@ -771,19 +911,18 @@ namespace Frostline
             {
                 resultTitle.text = "选择一张新牌";
                 resultDetail.text = $"已攻克{game.Location.Name}。选中的牌会在下一战开局抽到。";
-                for (int i = 0; i < DispatchRoute.Rewards.Count; i++)
+                for (int i = 0; i < route.Rewards.Count; i++)
                 {
                     int index = i;
-                    Card card = DispatchRoute.Rewards[i];
-                    var option = AddChoice(card.Name, card.Unit == null ? "道具" : "队员", CardDetails(card), () =>
+                    AddSupplyChoice(route.Rewards[i], () =>
                     {
-                        if (route.ClaimReward(index))
+                        if (!route.ClaimReward(index))
+                            return;
+                        if (route.Battle == null)
+                            LoadBattle();
+                        else
                             RenderOverlay();
                     });
-                    if (card.Unit != null)
-                        AddPortrait(option, card.Art).SendToBack();
-                    else
-                        option.Insert(0, BuildEffectArt(card));
                 }
             }
             else if (equipping)
@@ -799,7 +938,7 @@ namespace Frostline
                     int index = i;
                     Card card = deck[i];
                     var option = AddChoice(card.Name, Pendants.Description(pendant),
-                        UnitDetails(DeploymentPreview(new Card(card.Unit, pendant: pendant), false)), () =>
+                        UnitDetails(DeploymentPreview(card.Equip(pendant), false)), () =>
                         {
                             if (route.EquipPendant(index))
                                 LoadBattle();
@@ -816,6 +955,11 @@ namespace Frostline
                 if (!won)
                     choices.Add(ButtonWith("重试本战", RestartBattle, "button"));
                 choices.Add(ButtonWith("重新出发", ResetRun, "button", "primary"));
+                choices.Add(ButtonWith("返回标题", () =>
+                {
+                    showingTitle = true;
+                    ResetRun();
+                }, "button"));
             }
         }
 
@@ -828,9 +972,20 @@ namespace Frostline
             return option;
         }
 
+        private void AddSupplyChoice(Card card, Action choose)
+        {
+            var option = AddChoice(card.Name, card.Unit == null ? "道具" : "队员", CardDetails(card), choose);
+            option.AddToClassList("supply-choice");
+            AddCardArt(option, card).SendToBack();
+        }
+
         private Button AddChoice(string title, string subtitle, string detail, Action choose)
         {
-            var button = ButtonWith(null, choose, "button", "selection-card");
+            var button = ButtonWith(null, () =>
+            {
+                PlayCue("paper");
+                choose();
+            }, "button", "selection-card");
             button.Add(Text(title, "selection-title"));
             button.Add(Text(subtitle, "selection-subtitle"));
             button.Add(Text(detail, "selection-detail"));
@@ -838,9 +993,133 @@ namespace Frostline
             return button;
         }
 
+        private bool CanReviewDeck => route?.Companion != null && game?.Phase != BattlePhase.Resolving
+            && resolving == null && !confirmRestart;
+
+        private void BindDeckView()
+        {
+            deckOverlay = screen.Q("deck-overlay");
+            deckGrid = screen.Q("deck-grid");
+            deckDetail = screen.Q("deck-detail");
+            deckScroll = screen.Q<ScrollView>("deck-scroll");
+            deckSummary = screen.Q<Label>("deck-summary");
+            inspectDeck = screen.Q<Button>("inspect-deck");
+            inspectDraw = screen.Q<Button>("inspect-draw");
+            inspectDiscard = screen.Q<Button>("inspect-discard");
+            routeDeck = screen.Q<Button>("route-deck");
+            rosterTab = screen.Q<Button>("deck-roster-tab");
+            drawTab = screen.Q<Button>("deck-draw-tab");
+            discardTab = screen.Q<Button>("deck-discard-tab");
+
+            inspectDeck.clicked += () => ShowDeck(DeckPage.Roster);
+            inspectDraw.clicked += () => ShowDeck(DeckPage.Draw);
+            inspectDiscard.clicked += () => ShowDeck(DeckPage.Discard);
+            routeDeck.clicked += () => ShowDeck(DeckPage.Roster);
+            rosterTab.clicked += () => ShowDeck(DeckPage.Roster);
+            drawTab.clicked += () => ShowDeck(DeckPage.Draw);
+            discardTab.clicked += () => ShowDeck(DeckPage.Discard);
+            screen.Q<Button>("close-deck").clicked += CloseDeck;
+        }
+
+        private void ShowDeck(DeckPage page)
+        {
+            if (!CanReviewDeck || (page != DeckPage.Roster && game == null))
+                return;
+
+            ClearDrag();
+            StopReturn();
+            deckPage = page;
+            deckOverlay.style.display = DisplayStyle.Flex;
+            deckGrid.Clear();
+            deckDetail.Clear();
+            selectedDeckTile = null;
+            deckScroll.scrollOffset = Vector2.zero;
+
+            bool roster = page == DeckPage.Roster;
+            rosterTab.text = $"队伍与牌组  {route.DeckCount}";
+            rosterTab.EnableInClassList("current", roster);
+            drawTab.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
+            discardTab.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
+            if (game != null)
+            {
+                drawTab.text = $"抽牌堆  {game.DrawCount}";
+                discardTab.text = $"弃牌堆  {game.DiscardCount}";
+                drawTab.EnableInClassList("current", page == DeckPage.Draw);
+                discardTab.EnableInClassList("current", page == DeckPage.Discard);
+            }
+
+            var source = page switch
+            {
+                DeckPage.Draw => game.DrawPile,
+                DeckPage.Discard => game.DiscardPile,
+                _ => route.Deck
+            };
+            deckSummary.text = page switch
+            {
+                DeckPage.Draw => "查看剩余卡牌。列表按卡名排列。",
+                DeckPage.Discard => "抽牌堆见底时，这些牌将洗回抽牌堆。",
+                _ => $"{route.Loadout.DeckName} · 2 张开局部署牌 · {source.Count} 张卡组牌"
+            };
+
+            if (roster)
+            {
+                AddDeckTile(route.CaptainCard, 1, "主角");
+                AddDeckTile(route.CompanionCard, 1, "随从");
+            }
+
+            // Group only cards with identical combat values, including recalled units' health and pendants.
+            var groups = source.GroupBy(card =>
+                (card.Name, card.Unit, card.Action, card.Amount, card.Damage, card.Effect, card.TargetsEnemy,
+                    card.DeploymentHealth, card.DeploymentAttack, card.DeploymentEffectBonus, card.Pendant, card.BonusAgainst, card.BonusDamage));
+            foreach (var group in groups.OrderBy(group => group.Key.Name, StringComparer.Ordinal))
+                AddDeckTile(group.First(), group.Count(), null);
+
+            if (selectedDeckTile == null)
+                deckDetail.Add(Text("这个牌堆是空的。", "deck-empty"));
+        }
+
+        private void CloseDeck()
+        {
+            deckPage = null;
+            deckOverlay.style.display = DisplayStyle.None;
+        }
+
+        private void AddDeckTile(Card card, int count, string role)
+        {
+            var tile = ButtonWith(null, null, "button", "deck-tile");
+            tile.clicked += () => ShowDeckCard(tile, card, role);
+            AddCardArt(tile, card);
+            tile.Add(Text(card.Name, "deck-tile-title"));
+            if (role != null || count > 1 || card.Pendant != Pendant.None)
+            {
+                var badge = Element("deck-tile-badge");
+                if (card.Pendant != Pendant.None)
+                    badge.Add(Icon("pendant", "deck-pendant"));
+                if (role != null || count > 1)
+                    badge.Add(Text(role ?? $"×{count}", "deck-tile-count"));
+                tile.Add(badge);
+            }
+            deckGrid.Add(tile);
+            if (selectedDeckTile == null)
+                ShowDeckCard(tile, card, role);
+        }
+
+        private void ShowDeckCard(Button tile, Card card, string role)
+        {
+            selectedDeckTile?.RemoveFromClassList("current");
+            selectedDeckTile = tile;
+            selectedDeckTile.AddToClassList("current");
+            deckDetail.Clear();
+            deckDetail.Add(Text(role ?? (card.Unit != null ? "队员" : "道具"), "deck-card-role"));
+            var face = Element("deck-card-face");
+            DrawCardFace(face, card, role == "主角", role != null);
+            deckDetail.Add(face);
+            deckDetail.Add(Text(card.Unit == null ? CardDetails(card) : UnitDetails(DeploymentPreview(card, false)), "deck-card-description"));
+        }
+
         private void OnPointerDown(PointerDownEvent evt)
         {
-            if (evt.button != 0 || game?.Phase != BattlePhase.Planning || confirmRestart)
+            if (evt.button != 0 || game?.Phase != BattlePhase.Planning || confirmRestart || deckPage.HasValue)
                 return;
 
             for (VisualElement element = evt.target as VisualElement; element != null; element = element.parent)
@@ -1008,19 +1287,19 @@ namespace Frostline
             card.style.top = position.y;
         }
 
-        private void DrawHandFace(VisualElement view, Card card)
+        private void DrawHandFace(VisualElement view, Card card) =>
+            DrawCardFace(view, card, game.IsCaptainCard(card), game.Opening);
+
+        private void DrawCardFace(VisualElement view, Card card, bool leader, bool crowned)
         {
             if (card.Unit != null)
             {
-                DrawUnitFace(view, DeploymentPreview(card, game.IsCaptainCard(card)), game.Opening);
+                DrawUnitFace(view, DeploymentPreview(card, leader), crowned);
                 return;
             }
 
             view.AddToClassList("item-card");
-            if (card.Action == CardAction.ApplyEffect)
-                view.Add(BuildEffectArt(card));
-            else
-                AddPortrait(view, card.Art);
+            AddCardArt(view, card);
             view.Add(Text(card.Name, "face-title"));
             view.Add(Text(card.Description, "card-desc"));
             if (card.Damage > 0)
@@ -1030,23 +1309,25 @@ namespace Frostline
                 case CardAction.Freeze: AddStat(view, "snow", card.Amount.ToString(), "bottom-badge"); break;
                 case CardAction.Heal: AddStat(view, "heal", card.Amount.ToString(), "bottom-badge"); break;
                 case CardAction.Hasten: AddStat(view, "timer", card.Amount.ToString(), "bottom-badge"); break;
+                case CardAction.Strike when card.BonusDamage > 0:
+                    AddStat(view, EffectIcon(card.BonusAgainst), $"+{card.BonusDamage}", "bottom-badge");
+                    break;
             }
         }
 
-        private VisualElement BuildEffectArt(Card card)
+        private VisualElement AddCardArt(VisualElement view, Card card)
         {
-            var art = Element("effect-art");
-            art.AddToClassList(EffectClass(card.Effect));
-            art.Add(Icon(EffectIcon(card.Effect), "effect-symbol"));
-            art.Add(Text($"+{card.Amount}", "effect-amount"));
+            var art = AddPortrait(view, card.Art);
+            if (card.Action == CardAction.ApplyEffect)
+            {
+                var badge = Stat(EffectIcon(card.Effect), $"+{card.Amount}", "item-effect-badge");
+                badge.AddToClassList(EffectClass(card.Effect));
+                art.Add(badge);
+            }
             return art;
         }
 
-        private static Unit DeploymentPreview(Card card, bool leader) => new(card.Unit, leader, card.Pendant)
-        {
-            Health = card.DeploymentHealth,
-            EffectBonus = card.DeploymentEffectBonus
-        };
+        private static Unit DeploymentPreview(Card card, bool leader) => card.PreviewDeployment(leader);
 
         private void DrawUnitFace(VisualElement view, Unit unit, bool crowned = false)
         {
@@ -1075,8 +1356,13 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.Weakness, unit.Weakness);
             AddEffectBadge(statuses, EffectKind.Block, unit.Block);
             AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
+            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns);
+            AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
             if (statuses.childCount > 0)
+            {
+                statuses.EnableInClassList("dense", statuses.childCount > 10);
                 view.Add(statuses);
+            }
 
             AddPortrait(view, type.Art);
             view.Add(Text(type.Name, "face-title"));
@@ -1112,6 +1398,8 @@ namespace Frostline
             EffectKind.Ink => "effect-ink",
             EffectKind.Weakness => "effect-weakness",
             EffectKind.Block => "effect-block",
+            EffectKind.Thorns => "effect-thorns",
+            EffectKind.Burn => "effect-burn",
             _ => "effect-bonus"
         };
 
@@ -1125,6 +1413,9 @@ namespace Frostline
             EffectKind.Ink => "ink",
             EffectKind.Weakness => "weakness",
             EffectKind.Block => "block",
+            EffectKind.Thorns => "barbs",
+            EffectKind.Burn => "burn",
+            EffectKind.AttackGrowth => "attack",
             _ => "bonus"
         };
 
@@ -1142,7 +1433,8 @@ namespace Frostline
         private VisualElement AddPortrait(VisualElement view, string art)
         {
             var picture = Element("face-art");
-            Paint(picture, $"CardArt/{art}");
+            if (!string.IsNullOrEmpty(art))
+                Paint(picture, art);
             view.Add(picture);
             return picture;
         }
