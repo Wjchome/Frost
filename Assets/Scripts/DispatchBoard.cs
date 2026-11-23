@@ -7,7 +7,7 @@ using UnityEngine.UIElements;
 
 namespace Frostline
 {
-    [RequireComponent(typeof(UIDocument))]
+    [RequireComponent(typeof(UIDocument), typeof(AudioSource))]
     public sealed class DispatchBoard : MonoBehaviour
     {
         private enum DeckPage { Roster, Draw, Discard }
@@ -140,7 +140,8 @@ namespace Frostline
             showingGuide = false;
             titleSound = screen.Q<Button>("title-sound");
             battleSound = screen.Q<Button>("battle-sound");
-            audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+            if (!TryGetComponent<AudioSource>(out audioSource))
+                audioSource = gameObject.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
             audioSource.spatialBlend = 0f;
             if (FindFirstObjectByType<AudioListener>() == null)
@@ -360,6 +361,11 @@ namespace Frostline
             var actor = game.At(action.Source);
             if (actor == null)
                 yield break;
+            if (actor.Type.Pattern == AttackPattern.Support)
+            {
+                yield return new WaitForSecondsRealtime(0.16f);
+                yield break;
+            }
 
             var motion = FloatingCard(sourceRect);
             DrawUnitFace(motion, actor);
@@ -776,7 +782,12 @@ namespace Frostline
         {
             if (card.Unit != null)
                 return card.Description + UnitDetails(DeploymentPreview(card, leader: false));
-            string preview = target != null && card.BonusDamage > 0 ? $" 本次伤害 {card.DamageAgainst(target)}。" : "";
+            string preview = "";
+            if (target != null && card.Damage > 0 && (card.BonusDamage > 0 || target.Exposed > 0))
+            {
+                int damage = target.Block > 0 ? 0 : card.DamageAgainst(target) + target.Exposed;
+                preview = $" 本次伤害 {damage}。";
+            }
             return card.Description + Effects.Rule(card.Effect) + preview;
         }
 
@@ -786,6 +797,8 @@ namespace Frostline
             string pattern = Expedition.PatternName(type.Pattern);
             if (type.Pattern == AttackPattern.Aimless)
                 pattern += "（从高亮目标随机选一名）";
+            if (type.Pattern == AttackPattern.Support)
+                pattern += "（倒计时归零，给予同排最前方的其他友军）";
             string frenzy = type.Frenzy > 1 ? $" · 狂热 ×{type.Frenzy}" : "";
             string ability = type.Ability.Effect == EffectKind.None ? "" : " · " + type.Ability.Describe(unit.AbilityBonus);
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
@@ -798,6 +811,7 @@ namespace Frostline
                 (unit.Shell > 0 ? $" · 护壳 {unit.Shell}" : "") +
                 (unit.Thorns > 0 ? $" · 反伤 {unit.Thorns}" : "") +
                 (unit.Burn > 0 ? $" · 灼烧 {unit.Burn}" : "") +
+                (unit.Exposed > 0 ? $" · 易伤 {unit.Exposed}" : "") +
                 (unit.EffectBonus > 0 ? $" · 效果 +{unit.EffectBonus}" : "");
             string pendant = unit.Pendant != Pendant.None
                 ? $" · {Pendants.Name(unit.Pendant)} {Pendants.Description(unit.Pendant)}" : "";
@@ -877,7 +891,7 @@ namespace Frostline
             {
                 resultTitle.text = route.StageTitle;
                 string party = $"{route.Loadout.Captain.Name}与{route.Companion.Name}携带 {route.DeckCount} 张卡牌。";
-                resultDetail.text = route.Stage == 1 ? party + "胜利后获得一张新牌和一枚挂坠。"
+                resultDetail.text = route.Stage < route.StageCount ? party + "胜利后获得一张新牌和一枚挂坠。"
                     : party + "选择最后一战。";
                 for (int i = 0; i < route.EncounterChoices.Count; i++)
                 {
@@ -929,14 +943,13 @@ namespace Frostline
             {
                 Pendant pendant = route.PendingPendant;
                 resultTitle.text = Pendants.Name(pendant);
-                resultDetail.text = $"{Pendants.Description(pendant)}。选择一张队员牌装备，挂坠会随卡牌进入下一战。";
-                var deck = route.Deck;
-                for (int i = 0; i < deck.Count; i++)
+                resultDetail.text = $"{Pendants.Description(pendant)}。选择一名单位装备，挂坠会随卡牌进入下一战。";
+                for (int i = 0; i < route.PendantTargetCount; i++)
                 {
                     if (!route.CanEquipPendant(i))
                         continue;
                     int index = i;
-                    Card card = deck[i];
+                    Card card = route.GetPendantTarget(i);
                     var option = AddChoice(card.Name, Pendants.Description(pendant),
                         UnitDetails(DeploymentPreview(card.Equip(pendant), false)), () =>
                         {
@@ -1358,6 +1371,7 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
             AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns);
             AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
+            AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
             if (statuses.childCount > 0)
             {
                 statuses.EnableInClassList("dense", statuses.childCount > 10);
@@ -1400,6 +1414,7 @@ namespace Frostline
             EffectKind.Block => "effect-block",
             EffectKind.Thorns => "effect-thorns",
             EffectKind.Burn => "effect-burn",
+            EffectKind.Exposed => "effect-exposed",
             _ => "effect-bonus"
         };
 
@@ -1416,6 +1431,8 @@ namespace Frostline
             EffectKind.Thorns => "barbs",
             EffectKind.Burn => "burn",
             EffectKind.AttackGrowth => "attack",
+            EffectKind.Exposed => "exposed",
+            EffectKind.HealthGrowth => "health",
             _ => "bonus"
         };
 

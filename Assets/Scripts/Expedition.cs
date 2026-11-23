@@ -3,23 +3,25 @@ using System.Collections.Generic;
 
 namespace Frostline
 {
-    public enum CardAction { Deploy, Strike, Freeze, Heal, Hasten, ApplyEffect }
+    public enum CardAction { Deploy, Strike, Freeze, Heal, Hasten, ApplyEffect, Shift }
     public enum BattlePhase { Planning, Resolving, Won, Lost }
     public enum BattleEffect { Windup, Attack, Ice, Recovery, Arrival, Guard, Status, Burst, Retaliation, Burning }
-    public enum AttackPattern { Front, Barrage, Longshot, Aimless }
-    public enum EffectTrigger { Deploy, Hit, Kill, WhenHit }
-    public enum EffectKind { None, Heal, Shell, Snow, Spice, Overload, Ink, Weakness, Block, EffectBonus, Thorns, Burn, AttackGrowth }
-    public enum Pendant { None, WarmStone, TuningRing }
+    public enum AttackPattern { Front, Barrage, Longshot, Aimless, Support }
+    public enum EffectTrigger { Deploy, Hit, Kill, WhenHit, Act }
+    public enum EffectKind { None, Heal, Shell, Snow, Spice, Overload, Ink, Weakness, Block, EffectBonus, Thorns, Burn, AttackGrowth, Exposed, HealthGrowth }
+    public enum Pendant { None, WarmStone, TuningRing, SwiftClasp }
 
     public static class Pendants
     {
         public static int Health(Pendant pendant) => pendant == Pendant.WarmStone ? 2 : 0;
         public static int Effect(Pendant pendant) => pendant == Pendant.TuningRing ? 1 : 0;
+        public static int Speed(Pendant pendant) => pendant == Pendant.SwiftClasp ? 1 : 0;
 
         public static string Name(Pendant pendant) => pendant switch
         {
             Pendant.WarmStone => "暖石挂坠",
             Pendant.TuningRing => "调律挂坠",
+            Pendant.SwiftClasp => "疾行扣",
             _ => ""
         };
 
@@ -27,6 +29,7 @@ namespace Frostline
         {
             Pendant.WarmStone => $"最大生命 +{Health(pendant)}",
             Pendant.TuningRing => $"触发能力数值 +{Effect(pendant)}",
+            Pendant.SwiftClasp => $"最大倒计时 −{Speed(pendant)}，最低为 1",
             _ => ""
         };
     }
@@ -46,6 +49,7 @@ namespace Frostline
             EffectTrigger.Hit => "命中",
             EffectTrigger.Kill => "击倒",
             EffectTrigger.WhenHit => "受击",
+            EffectTrigger.Act => "行动",
             _ => ""
         };
 
@@ -73,6 +77,8 @@ namespace Frostline
             EffectKind.Thorns => "反伤",
             EffectKind.Burn => "灼烧",
             EffectKind.AttackGrowth => "基础攻击",
+            EffectKind.Exposed => "易伤",
+            EffectKind.HealthGrowth => "最大生命",
             _ => ""
         };
 
@@ -86,6 +92,7 @@ namespace Frostline
             EffectKind.EffectBonus => "本场战斗提升触发能力的数值，撤回后保留。",
             EffectKind.Thorns => "承受一次有伤害的单位攻击后，若仍存活，对攻击者造成等同层数的反伤，再减少 1 层。",
             EffectKind.Burn => "回合末受到等同层数的伤害，再减少 1 层。",
+            EffectKind.Exposed => "下次未被格挡的伤害加上当前层数，然后清空易伤。护壳照常吸收伤害。",
             _ => ""
         };
     }
@@ -111,10 +118,12 @@ namespace Frostline
     internal sealed class UnitProgress
     {
         public int Attack { get; private set; }
+        public int Health { get; private set; }
 
-        public UnitProgress(int attack) => Attack = attack;
+        public UnitProgress(int attack, int health) => (Attack, Health) = (attack, health);
 
         public void IncreaseAttack(int amount) => Attack += amount;
+        public void IncreaseHealth(int amount) => Health += amount;
     }
 
     public sealed class Unit
@@ -124,15 +133,16 @@ namespace Frostline
         public readonly Pendant Pendant;
         public int Health, Counter, Frozen, Shell;
         public int Spice, Overload, Ink, Weakness, Block, EffectBonus;
-        public int Thorns, Burn;
+        public int Thorns, Burn, Exposed;
         internal UnitProgress Progress { get; private set; }
         public int BaseAttack => Progress.Attack;
         public int Attack => Math.Max(0, BaseAttack + Spice - Weakness);
-        public int MaxHealth => Type.Health + Pendants.Health(Pendant);
+        public int MaxHealth => Progress.Health + Pendants.Health(Pendant);
+        public int Period => Math.Max(1, Type.Period - Pendants.Speed(Pendant));
         public int AbilityBonus => EffectBonus + Pendants.Effect(Pendant);
 
         public Unit(UnitType type, bool leader = false, Pendant pendant = Pendant.None)
-            : this(type, leader, pendant, new UnitProgress(type.Power)) { }
+            : this(type, leader, pendant, new UnitProgress(type.Power, type.Health)) { }
 
         internal Unit(UnitType type, bool leader, Pendant pendant, UnitProgress progress)
         {
@@ -141,13 +151,13 @@ namespace Frostline
             Pendant = pendant;
             Progress = progress;
             Health = MaxHealth;
-            Counter = type.Period;
+            Counter = Period;
         }
 
         public Unit Copy()
         {
             var copy = (Unit)MemberwiseClone();
-            copy.Progress = new UnitProgress(BaseAttack);
+            copy.Progress = new UnitProgress(BaseAttack, Progress.Health);
             return copy;
         }
     }
@@ -159,7 +169,9 @@ namespace Frostline
         public readonly int Amount, Damage, BonusDamage;
         public readonly EffectKind Effect, BonusAgainst;
         public readonly bool TargetsEnemy;
-        public int DeploymentHealth { get; }
+        private readonly int? deploymentHealth;
+        public int DeploymentMaxHealth => Unit == null ? 0 : (progress?.Health ?? Unit.Health) + Pendants.Health(Pendant);
+        public int DeploymentHealth => deploymentHealth ?? DeploymentMaxHealth;
         public int DeploymentEffectBonus { get; }
         public int DeploymentAttack => progress?.Attack ?? Unit?.Power ?? 0;
         public readonly UnitType Unit;
@@ -177,7 +189,9 @@ namespace Frostline
             CardAction.Hasten => $"倒计时减少 {Amount}，归零立刻行动。",
             CardAction.ApplyEffect when Effect == EffectKind.EffectBonus => $"使一名友方的触发能力数值 +{Amount}。",
             CardAction.ApplyEffect when Effect == EffectKind.AttackGrowth => $"一名友方在本次远征中永久获得 {Amount} 点基础攻击。",
+            CardAction.ApplyEffect when Effect == EffectKind.HealthGrowth => $"一名友方在本次远征中永久获得 {Amount} 点最大生命，并回复等量生命。",
             CardAction.ApplyEffect => $"给{(TargetsEnemy ? "敌方" : "友方")}施加 {Effects.Name(Effect)} +{Amount}。",
+            CardAction.Shift => "把一名敌人拉到另一排的第一个空位。",
             _ => ""
         };
 
@@ -189,7 +203,7 @@ namespace Frostline
         {
             Unit = unit;
             Pendant = pendant;
-            DeploymentHealth = deploymentHealth ?? unit.Health + Pendants.Health(pendant);
+            this.deploymentHealth = deploymentHealth;
             DeploymentEffectBonus = effectBonus;
             this.progress = progress;
         }
@@ -206,23 +220,26 @@ namespace Frostline
         {
             EffectKind.Snow when target.Frozen > 0 => BonusDamage,
             EffectKind.Overload when target.Overload > 0 => BonusDamage,
+            EffectKind.Shell when target.Shell > 0 => BonusDamage,
             _ => 0
         });
 
         internal Card Recruit() => Unit == null ? this
-            : new Card(Unit, null, 0, Pendant, new UnitProgress(Unit.Power));
+            : new Card(Unit, null, 0, Pendant, new UnitProgress(Unit.Power, Unit.Health));
 
         internal Card Equip(Pendant pendant) => new Card(Unit, null, 0, pendant, progress);
 
         internal static Card FromRecall(Unit unit, int health) =>
             new Card(unit.Type, health, unit.EffectBonus, unit.Pendant, unit.Progress);
 
-        internal Unit Deploy(bool leader) => CreateUnit(leader, progress ?? new UnitProgress(DeploymentAttack));
+        private UnitProgress CopyProgress() => new(DeploymentAttack, progress?.Health ?? Unit.Health);
 
-        internal Unit PreviewDeployment(bool leader) => CreateUnit(leader, new UnitProgress(DeploymentAttack));
+        internal Unit Deploy(bool leader) => CreateUnit(leader, progress ?? CopyProgress());
+
+        internal Unit PreviewDeployment(bool leader) => CreateUnit(leader, CopyProgress());
 
         internal Card CopyForForecast() => Unit == null ? this
-            : new Card(Unit, DeploymentHealth, DeploymentEffectBonus, Pendant, new UnitProgress(DeploymentAttack));
+            : new Card(Unit, DeploymentHealth, DeploymentEffectBonus, Pendant, CopyProgress());
 
         private Unit CreateUnit(bool leader, UnitProgress state) => new(Unit, leader, Pendant, state)
         {
@@ -370,9 +387,10 @@ namespace Frostline
                 CardAction.Strike or CardAction.Freeze => pos.Enemy && unit != null,
                 CardAction.Heal => !pos.Enemy && unit != null,
                 CardAction.Hasten => !pos.Enemy && unit != null && unit.Counter > 0 && unit.Frozen == 0,
-                CardAction.ApplyEffect when card.Effect == EffectKind.AttackGrowth => !pos.Enemy && unit != null,
+                CardAction.ApplyEffect when card.Effect is EffectKind.AttackGrowth or EffectKind.HealthGrowth => !pos.Enemy && unit != null,
                 CardAction.ApplyEffect => pos.Enemy == card.TargetsEnemy && unit != null &&
                     (card.Effect != EffectKind.EffectBonus || unit.Type.Ability.Effect != EffectKind.None),
+                CardAction.Shift => pos.Enemy && unit != null && ShiftDestination(pos).HasValue,
                 _ => false
             };
         }
@@ -380,6 +398,17 @@ namespace Frostline
         // Return every possible target for Aimless. The real attack rolls once per hit.
         public IReadOnlyList<Position> AttackTargets(Position source, UnitType type)
         {
+            if (type.Pattern == AttackPattern.Support)
+            {
+                for (int slot = 0; slot < Slots; slot++)
+                {
+                    var ally = new Position(source.Enemy, source.Row, slot);
+                    if (!ally.Equals(source) && At(ally) != null)
+                        return new[] { ally };
+                }
+                return Array.Empty<Position>();
+            }
+
             var targets = new List<Position>(Slots);
             int row = Front(!source.Enemy, source.Row).HasValue ? source.Row : 1 - source.Row;
             for (int slot = 0; slot < Slots; slot++)
@@ -402,6 +431,8 @@ namespace Frostline
                 return Array.Empty<Position>();
 
             Card card = hand[index];
+            if (card.Action == CardAction.Shift && ShiftDestination(anchor) is Position destination)
+                return new[] { anchor, destination };
             if (card.Action == CardAction.Heal)
             {
                 var targets = new List<Position>();
@@ -415,6 +446,17 @@ namespace Frostline
             if (card.Effect == EffectKind.Overload && At(anchor).Overload + card.Amount >= At(anchor).Health)
                 return OccupiedRow(anchor);
             return new[] { anchor };
+        }
+
+        private Position? ShiftDestination(Position source)
+        {
+            for (int slot = 0; slot < Slots; slot++)
+            {
+                var destination = new Position(source.Enemy, 1 - source.Row, slot);
+                if (At(destination) == null)
+                    return destination;
+            }
+            return null;
         }
 
         public (IReadOnlyList<Position> Actions, IReadOnlyList<(Position Position, UnitType Unit)> Arrivals) ForecastTurn(
@@ -557,6 +599,13 @@ namespace Frostline
                     foreach (BattleBeat effect in ApplyEffect(target, target, card.Effect, card.Amount))
                         yield return effect;
                     break;
+                case CardAction.Shift:
+                    Position destination = ShiftDestination(target).Value;
+                    Set(target, null);
+                    Set(destination, unit);
+                    Notice = $"{unit.Type.Name}被移到{(destination.Row == 0 ? "上排" : "下排")}。";
+                    yield return new BattleBeat(target, destination, BattleEffect.Status, "换排");
+                    break;
             }
             if (card.Action != CardAction.Deploy)
                 discard.Add(card);
@@ -647,7 +696,21 @@ namespace Frostline
 
         private IEnumerable<BattleBeat> Trigger(Position source, Unit attacker)
         {
-            attacker.Counter = attacker.Type.Period;
+            attacker.Counter = attacker.Period;
+            if (attacker.Type.Pattern == AttackPattern.Support)
+            {
+                var allies = AttackTargets(source, attacker.Type);
+                if (attacker.Ink == 0 && allies.Count != 0)
+                {
+                    Position target = allies[0];
+                    Notice = $"{attacker.Type.Name}准备援护{At(target).Type.Name}。";
+                    yield return new BattleBeat(source, target, BattleEffect.Windup, "援护");
+                    foreach (BattleBeat effect in TriggerAbility(source, target, attacker, EffectTrigger.Act))
+                        yield return effect;
+                }
+                yield break;
+            }
+
             bool attacked = false;
             for (int hit = 1; hit <= attacker.Type.Frenzy && attacker.Frozen == 0; hit++)
             {
@@ -765,6 +828,7 @@ namespace Frostline
             AttackPattern.Barrage => "横扫",
             AttackPattern.Longshot => "远射",
             AttackPattern.Aimless => "无法瞄准",
+            AttackPattern.Support => "援护",
             _ => "普通攻击"
         };
 
@@ -810,10 +874,18 @@ namespace Frostline
                 case EffectKind.EffectBonus: unit.EffectBonus += amount; break;
                 case EffectKind.Thorns: unit.Thorns += amount; break;
                 case EffectKind.Burn: unit.Burn += amount; break;
+                case EffectKind.Exposed: unit.Exposed += amount; break;
                 case EffectKind.AttackGrowth:
                     if (target.Enemy)
                         yield break;
                     unit.Progress.IncreaseAttack(amount);
+                    break;
+                case EffectKind.HealthGrowth:
+                    if (target.Enemy)
+                        yield break;
+                    unit.Progress.IncreaseHealth(amount);
+                    unit.Health += amount;
+                    feedback = BattleEffect.Recovery;
                     break;
                 default: yield break;
             }
@@ -917,11 +989,20 @@ namespace Frostline
                 return new BattleBeat(source, target, feedback, "格挡 −1");
             }
 
+            int exposed = amount > 0 ? victim.Exposed : 0;
+            if (exposed > 0)
+            {
+                amount += exposed;
+                victim.Exposed = 0;
+            }
+
             int absorbed = Math.Min(victim.Shell, amount);
             victim.Shell -= absorbed;
             int healthDamage = amount - absorbed;
             victim.Health = Math.Max(0, victim.Health - healthDamage);
             Notice = $"{name}对{victim.Type.Name}造成 {healthDamage} 点伤害。";
+            if (exposed > 0)
+                Notice += $"易伤 +{exposed}。";
             if (absorbed > 0)
                 Notice += $"护壳吸收 {absorbed} 点。";
             if (victim.Health == 0)

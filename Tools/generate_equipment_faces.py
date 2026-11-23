@@ -19,6 +19,10 @@ PALETTES = {
     "arccut": ("#372d43", "#76506b", "#ffd196"),
     "barbs": ("#38323c", "#695b48", "#e0c18b"),
     "embers": ("#4d3035", "#924e43", "#ffd2a1"),
+    "hook": ("#253a50", "#517181", "#a8e5df"),
+    "icepin": ("#503745", "#88616e", "#f5c1b4"),
+    "snowstitch": ("#2b4046", "#4f7375", "#c5dfd2"),
+    "rivethammer": ("#523c3f", "#8a675d", "#efc587"),
 }
 
 
@@ -131,6 +135,27 @@ def portrait(name):
         draw.polygon([(52,39),(62,51),(61,59),(54,64),(46,62),(41,55),(44,47),(48,52)],
                      fill="#ffad67", outline="#833442")
         draw.polygon([(53,49),(57,56),(53,60),(48,57),(49,53)], fill="#ffe399")
+    elif name == "hook":
+        draw.arc((25,32,70,69), 10, 340, fill="#c4d6a5", width=4)
+        draw.arc((29,39,62,64), 0, 340, fill="#dbecb4", width=3)
+        draw.line([(42,48),(54,31),(67,17),(77,21),(81,31),(75,39),(68,39),(64,34)],
+                  fill="#cfedf0", width=6, joint="curve")
+    elif name == "icepin":
+        draw.line([(25,59),(68,19)], fill="#2f293e", width=8)
+        draw.line([(33,53),(72,17)], fill="#d6edf4", width=5)
+        draw.polygon([(60,27),(81,12),(74,34)], fill="#ffe7e3", outline="#694d63")
+        draw.line([(24,49),(31,57),(20,66)], fill="#de9b87", width=4)
+    elif name == "snowstitch":
+        draw.rounded_rectangle((31,26,70,61), radius=6, fill="#b0c6b3", outline="#243c48", width=2)
+        for y in (32,40,48,56):
+            draw.line((33,y,68,y-3), fill="#688d83", width=2)
+        draw.arc((24,40,80,73), 190, 355, fill="#e9e8bb", width=3)
+        draw.line([(61,62),(74,40),(82,31)], fill="#fff0cc", width=2)
+    elif name == "rivethammer":
+        draw.line([(31,67),(60,33)], fill="#372835", width=9)
+        draw.line([(32,65),(59,34)], fill="#d59363", width=5)
+        draw.polygon([(46,28),(56,14),(76,27),(67,43)], fill="#b9b4a6", outline="#332b39", width=2)
+        draw.line([(57,17),(74,28)], fill="#faf0d2", width=3)
 
     image.resize((210, 158), Image.Resampling.NEAREST).save(OUTPUT / f"item_{name}.png")
 

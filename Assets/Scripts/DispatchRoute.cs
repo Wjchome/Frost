@@ -63,6 +63,7 @@ namespace Frostline
         public IReadOnlyList<Card> Rewards { get; private set; } = Array.Empty<Card>();
         public Expedition Battle { get; private set; }
         public Pendant PendingPendant { get; private set; }
+        public int PendantTargetCount => deck.Count + 2;
         private bool rewardClaimed;
         public bool CanClaimReward => Battle?.Phase == BattlePhase.Won && Stage < StageCount && !rewardClaimed;
 
@@ -120,22 +121,38 @@ namespace Frostline
             rewardClaimed = true;
             deck.Insert(0, Rewards[index].Recruit());
             PendingPendant = Battle.Location.RewardPendant;
-            if (!deck.Any(CanWearPendant))
+            if (!deck.Any(CanWearPendant) && !CanWearPendant(CaptainCard) && !CanWearPendant(CompanionCard))
                 AdvanceStage();
             return true;
         }
 
         private bool CanWearPendant(Card card) =>
-            PendingPendant != Pendant.None && card.Unit != null && card.Pendant == Pendant.None &&
-            (PendingPendant != Pendant.TuningRing || card.Unit.Ability.Effect != EffectKind.None);
+            PendingPendant != Pendant.None && card?.Unit != null && card.Pendant == Pendant.None &&
+            (PendingPendant != Pendant.TuningRing || card.Unit.Ability.Effect != EffectKind.None) &&
+            (PendingPendant != Pendant.SwiftClasp || card.Unit.Period > 1);
 
-        public bool CanEquipPendant(int index) => index >= 0 && index < deck.Count && CanWearPendant(deck[index]);
+        public Card GetPendantTarget(int index)
+        {
+            if (index < 0 || index >= PendantTargetCount)
+                return null;
+            if (index < deck.Count)
+                return deck[index];
+            return index == deck.Count ? CaptainCard : CompanionCard;
+        }
+
+        public bool CanEquipPendant(int index) => CanWearPendant(GetPendantTarget(index));
 
         public bool EquipPendant(int index)
         {
             if (!CanEquipPendant(index))
                 return false;
-            deck[index] = deck[index].Equip(PendingPendant);
+            Card equipped = GetPendantTarget(index).Equip(PendingPendant);
+            if (index < deck.Count)
+                deck[index] = equipped;
+            else if (index == deck.Count)
+                CaptainCard = equipped;
+            else
+                CompanionCard = equipped;
             AdvanceStage();
             return true;
         }

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df6257a678b45c1da73bd2763461c436, type: 3}
+  m_Name: IcePin
+  m_EditorClassIdentifier:
+  displayName: "裂冰针"
+  portrait: {fileID: 2800000, guid: ab838cb3053d5da1af493ca99e030e27, type: 3}
+  action: 5
+  effect: 13
+  amount: 3
+  targetsEnemy: 1
+  damage: 0
+  bonusAgainst: 0
+  bonusDamage: 0

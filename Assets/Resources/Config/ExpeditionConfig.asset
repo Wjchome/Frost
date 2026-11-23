@@ -77,3 +77,11 @@ MonoBehaviour:
     encounters:
     - {fileID: 11400000, guid: 7639a5efa4e65bed917bb45103c1e767, type: 2}
     - {fileID: 11400000, guid: 51314b55f1ff5ec1a5294ea4bcc8ef32, type: 2}
+  - title: "选择封锁线"
+    encounters:
+    - {fileID: 11400000, guid: 6c22484943f050c982deb573f1aadf9b, type: 2}
+    - {fileID: 11400000, guid: 7d69d5600ed65ee2a41ef058f84a55c2, type: 2}
+  - title: "选择终局关卡"
+    encounters:
+    - {fileID: 11400000, guid: 8bf70e450fc45c64844d78764388f331, type: 2}
+    - {fileID: 11400000, guid: e99f43646c7156629c45c5f6d119e19e, type: 2}

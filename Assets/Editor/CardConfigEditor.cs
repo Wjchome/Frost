@@ -29,10 +29,11 @@ namespace Frostline
             {
                 Draw("effect", "状态");
                 Draw("amount", "层数");
-                if ((EffectKind)serializedObject.FindProperty("effect").enumValueIndex != EffectKind.AttackGrowth)
+                var effect = (EffectKind)serializedObject.FindProperty("effect").enumValueIndex;
+                if (effect is not EffectKind.AttackGrowth and not EffectKind.HealthGrowth)
                     Draw("targetsEnemy", "以敌方为目标");
             }
-            else
+            else if (action != CardAction.Shift)
             {
                 if (action is CardAction.Strike or CardAction.Freeze)
                     Draw("damage", "伤害");

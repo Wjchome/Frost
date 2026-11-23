@@ -140,6 +140,7 @@
 .effect-bonus { background-color: #2f644c; }
 .effect-thorns { background-color: #635338; }
 .effect-burn { background-color: #934b2e; }
+.effect-exposed { background-color: #744552; }
 .order-note {
     display: none; position: absolute; left: 0; right: 0; top: 22px;
     font-size: 16px; color: #142e36; -unity-font-style: bold; -unity-text-align: middle-center;

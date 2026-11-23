@@ -129,6 +129,10 @@ def battlefield(kind, seed):
         "outpost": ("#173e48","#608a87","#e9d5a8","#345f66","#52777a","#97ada5","#39585e","#627b79","#a0b5ad"),
         "bridge": ("#1c3457","#657d99","#d1e3df","#374d74","#5c7298","#9cabc0","#314a71","#536d90","#9fb2c9"),
         "ridge": ("#382d48","#956a76","#ecd2ad","#544762","#786278","#c1999e","#513f55","#7b656f","#bfa5a0"),
+        "cableyard": ("#243f51","#6e8584","#e9c497","#405c68","#63797a","#a3b4a2","#40585f","#778479","#baa994"),
+        "watchtower": ("#202e49","#607585","#e8d5a4","#394e68","#536e82","#9baeb3","#344b61","#597783","#97a9b0"),
+        "fortress": ("#29364e","#84929b","#f0e4c8","#4d5771","#66768b","#b3bec2","#49586e","#768993","#b0babb"),
+        "mine": ("#352a3f","#8b5e63","#ffc792","#614452","#815a66","#ba8d85","#574251","#7a5a65","#be9489"),
     }
     top, bottom, light, rock, face, cap, ground, mid, snow = palettes[kind]
     image = sky(top, bottom, (608,93,27), light, 76, rng)
@@ -161,6 +165,36 @@ def battlefield(kind, seed):
             draw.polygon([(x+offset,169),(x+25,238),(x+4,225)], fill="#b48b97")
         for x, y in ((39,300),(84,322),(679,280),(714,310)):
             draw.line((x,y,x+59,y-9), fill="#cbb5af", width=2)
+    elif kind in ("cableyard", "watchtower"):
+        posts = ((45,244),(748,226))
+        for x, y in posts:
+            draw.rectangle((x-5,y-105,x+6,y),fill="#253d49")
+            draw.line((x-12,y-92,x+19,y-92), fill="#b4bbb2", width=5)
+            draw.ellipse((x-8,y-103,x+9,y-86), fill="#d0a36b")
+        if kind == "cableyard":
+            draw.arc((42,83,753,235), 0, 180, fill="#33434d", width=3)
+            draw.polygon([(59,278),(139,252),(156,266),(66,293)], fill="#765c57")
+            draw.line((69,281,145,257), fill="#ccac81", width=3)
+        else:
+            for x, y in ((48,240),(715,237)):
+                draw.polygon([(x-11,y),(x-8,y-84),(x+31,y-84),(x+36,y)], fill="#314559")
+                draw.polygon([(x-13,y-82),(x+11,y-107),(x+39,y-82)], fill="#acc1b8")
+                draw.rectangle((x+5,y-67,x+20,y-53), fill="#edc58d")
+    elif kind == "fortress":
+        for x in (12,686):
+            draw.rectangle((x,158,x+102,270),fill="#3d4c60")
+            for notch in range(x,x+100,25):
+                draw.rectangle((notch,144,notch+12,165),fill="#9fb1b9")
+            for y in (179,207,235):
+                draw.line((x+2,y,x+95,y),fill="#6b818b",width=2)
+            draw.rectangle((x+40,191,x+59,215),fill="#d9a87a")
+    elif kind == "mine":
+        for x, dx in ((58,1),(742,-1)):
+            draw.polygon([(x-44,267),(x-33,179),(x+21,148),(x+57,226),(x+37,282)],fill="#4b3649")
+            draw.polygon([(x-17,258),(x-16,216),(x+9,199),(x+30,216),(x+28,258)],fill="#2d2836")
+            draw.line([(x-19,253),(x-18,215),(x+9,197),(x+31,213),(x+30,253)],fill="#b87958",width=3)
+            draw.line((x+8,265,x+112*dx,345), fill="#bb967e", width=3)
+            draw.ellipse((x+23,233,x+29,241),fill="#f2b16d")
     else:
         for x, y, direction in ((4,287,1),(796,254,-1)):
             draw.polygon([(x,y),(x+28*direction,y-76),(x+70*direction,y-37),
@@ -192,7 +226,7 @@ def sound(name, seconds, partials, noise=0.0):
 
 if __name__ == "__main__":
     save_image(cover(), "cover")
-    for index, kind in enumerate(("valley", "outpost", "bridge", "ridge")):
+    for index, kind in enumerate(("valley", "outpost", "bridge", "ridge", "cableyard", "watchtower", "fortress", "mine")):
         save_image(battlefield(kind, 700 + index), f"field_{kind}")
     (ROOT / "Audio").mkdir(exist_ok=True)
     sound("paper", 0.14, [(182, 0.16, 24), (389, 0.10, 36)], noise=0.2)

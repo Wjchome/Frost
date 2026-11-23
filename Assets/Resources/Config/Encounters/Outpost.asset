@@ -35,4 +35,4 @@ MonoBehaviour:
   pendantReward: 2
   rewardCards:
   - {fileID: 11400000, guid: adf4cd5aad1a5efd8c8d3ef25b0bb480, type: 2}
-  - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
+  - {fileID: 11400000, guid: 3ab6efbd9e9f5b01bcf24976b03bc470, type: 2}
