@@ -125,13 +125,28 @@ namespace Frostline
             screen.RegisterCallback<PointerUpEvent>(OnPointerUp, TrickleDown.TrickleDown);
             screen.RegisterCallback<PointerCancelEvent>(_ =>
             {
+                if (beginDrag != null || ghost != null)
+                {
+                    CancelDrag();
+                    return;
+                }
                 ClearDrag();
                 ApplyTargets();
             }, TrickleDown.TrickleDown);
+            screen.RegisterCallback<PointerCaptureOutEvent>(_ =>
+            {
+                if (dragPointer >= 0 && (beginDrag != null || ghost != null))
+                    CancelDrag();
+            }, TrickleDown.TrickleDown);
             screen.RegisterCallback<PointerLeaveEvent>(evt =>
             {
-                if (evt.target != screen || ghost != null)
+                if (evt.target != screen)
                     return;
+                if (beginDrag != null || ghost != null)
+                {
+                    CancelDrag();
+                    return;
+                }
                 hoveredSlot = null;
                 hoveredCard = -1;
                 ApplyTargets();
@@ -1305,6 +1320,15 @@ namespace Frostline
                 dragOrigin = evt.position;
                 screen.CapturePointer(evt.pointerId);
                 evt.StopImmediatePropagation();
+
+                // 按在“已选中手牌的合法目标”上，这个手势就是“把牌用到这里”。
+                // 若放行 Select 分支，指针抖动超过阈值时 SelectUnit 会清掉 selectedCard，
+                // 牌打不出去，单位反被选中并显示换位/部署位置。
+                if (selectedCard >= 0 && CanPlayOnSlot(element, selectedCard, out Position slotPos))
+                {
+                    beginDrag = null;
+                    clickDrag = () => UseSlot(slotPos);
+                }
                 return;
             }
         }
@@ -1312,6 +1336,14 @@ namespace Frostline
         {
             if (beginDrag == null || evt.pointerId != dragPointer)
                 return;
+
+            // 鼠标左键已经松开却没收到 PointerUp（在视图外松手、切换窗口、丢掉指针捕获），
+            // 这里兜底收尾，否则拖拽会一直挂着，ghost 常驻并挡住手牌的选中刷新。
+            if ((evt.pressedButtons & 1) == 0)
+            {
+                CancelDrag();
+                return;
+            }
 
             if (ghost == null)
             {
@@ -1339,6 +1371,12 @@ namespace Frostline
             hoveredCard = -1;
             beginDrag();
             StopReturn();
+            // 覆盖 ghost 字段前必须先回收上一张浮卡，否则它会永久留在 screen 上盖住手牌。
+            if (ghost != null)
+            {
+                ghost.RemoveFromHierarchy();
+                ghost = null;
+            }
             ghost = FloatingCard(original);
             if (selectedCard >= 0)
                 DrawHandFace(ghost, game.Hand[selectedCard]);
@@ -1358,7 +1396,9 @@ namespace Frostline
             evt.StopImmediatePropagation();
             if (ghost == null)
             {
-                if (Vector2.Distance(dragOrigin, evt.position) < DragThreshold)
+                // beginDrag 为 null 说明按下点就是当前手牌的合法目标，这一下手势按“出牌”结算，
+                // 不管中间抖出多远都不切成单位换位。
+                if (beginDrag == null || Vector2.Distance(dragOrigin, evt.position) < DragThreshold)
                 {
                     Action click = clickDrag;
                     ClearDrag();
@@ -1398,6 +1438,19 @@ namespace Frostline
             ClearDrag();
             ClearSelection();
             returning = StartCoroutine(ReturnCard(card, source, start, tilt));
+        }
+
+        private bool CanPlayOnSlot(VisualElement element, int card, out Position pos)
+        {
+            foreach (var entry in slots)
+            {
+                if (entry.Value != element)
+                    continue;
+                pos = entry.Key;
+                return game.CanPlay(card, pos);
+            }
+            pos = default;
+            return false;
         }
 
         private bool CanDropOn(Position pos) => selectedCard >= 0 ? game.CanPlay(selectedCard, pos)
@@ -1485,6 +1538,34 @@ namespace Frostline
             beginDrag = null;
             clickDrag = null;
             hoveredSlot = null;
+            hoveredCard = -1;
+            // 被覆盖或半路中断的拖拽源不会走 dragSource 分支，这里把残留的半透明状态全部收回。
+            foreach (var card in cards)
+                card.RemoveFromClassList("motion-source");
+            foreach (var slot in slots.Values)
+                slot.RemoveFromClassList("motion-source");
+        }
+
+        // 拖拽在没有正常 PointerUp 的情况下中断：让浮卡飞回原位，并立刻重刷选中/预览，
+        // 避免旧的浮卡继续盖在手牌上，看起来“选中的还是上一张牌”。
+        private void CancelDrag()
+        {
+            var card = ghost;
+            var source = dragSource;
+            Vector2 start = ghostPosition;
+            float tilt = ghostTilt;
+            ghost = null;
+            ClearDrag();
+            ClearSelection();
+            if (card == null)
+                return;
+            if (source == null)
+            {
+                card.RemoveFromHierarchy();
+                return;
+            }
+            StopReturn();
+            returning = StartCoroutine(ReturnCard(card, source, start, tilt));
         }
 
         private VisualElement FloatingCard(Rect bounds)
