@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "冰淇淋"
   catalogGroup: "垃圾人"
-  portrait: {fileID: 2800000, guid: ab838cb3053d5da1af493ca99e030e27, type: 3}
+  portrait: {fileID: 2800000, guid: 6183beccdf41d834f8c98e555da5bc93, type: 3}
   action: 7
   effect: 20
   amount: 1

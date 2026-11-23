@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "鹅盾盾"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 4ca40345e756e774fa12b54240c2de50, type: 3}
+  portrait: {fileID: 2800000, guid: 984da5342532c9f4e99a9416d90502a6, type: 3}
   action: 0
   health: 6
   power: 1

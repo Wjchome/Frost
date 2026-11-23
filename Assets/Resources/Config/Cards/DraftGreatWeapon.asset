@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "大武器"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 850161162853f524d8468bcfb2d238a4, type: 3}
+  portrait: {fileID: 2800000, guid: 016d304b17f9b314b8bd90723edc3433, type: 3}
   action: 7
   effect: 15
   amount: 2

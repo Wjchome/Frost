@@ -19,8 +19,9 @@
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="battle-hud" class="battle-hud" style="display: none;">
+      <ui:VisualElement class="battle-shade" picking-mode="Ignore" />
       <ui:VisualElement class="top">
-        <ui:VisualElement>
+        <ui:VisualElement class="battle-location">
           <ui:Label name="location-title" class="title" />
           <ui:Label name="objective" class="objective" />
         </ui:VisualElement>

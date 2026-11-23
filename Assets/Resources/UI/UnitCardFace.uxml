@@ -17,13 +17,15 @@
     </ui:VisualElement>
     <ui:VisualElement name="unit-effects" class="effect-strip" picking-mode="Ignore" />
     <ui:VisualElement name="unit-portrait" class="face-art unit-portrait" picking-mode="Ignore" />
-    <ui:Label name="unit-name" text="霜线信使" class="face-title" picking-mode="Ignore" />
-    <ui:VisualElement name="unit-traits" class="traits" picking-mode="Ignore">
-      <ui:VisualElement name="unit-tags" class="trait-row" picking-mode="Ignore" />
-      <ui:VisualElement name="unit-ability" class="ability-value" picking-mode="Ignore">
-        <ui:Label name="unit-trigger" text="攻击时" class="ability-trigger" picking-mode="Ignore" />
-        <ui:VisualElement name="unit-ability-icon" class="ability-icon" picking-mode="Ignore" />
-        <ui:Label name="unit-ability-amount" text="+1" class="ability-amount" picking-mode="Ignore" />
+    <ui:VisualElement class="card-caption" picking-mode="Ignore">
+      <ui:Label name="unit-name" text="霜线信使" class="face-title" picking-mode="Ignore" />
+      <ui:VisualElement name="unit-traits" class="traits" picking-mode="Ignore">
+        <ui:VisualElement name="unit-tags" class="trait-row" picking-mode="Ignore" />
+        <ui:VisualElement name="unit-ability" class="ability-value" picking-mode="Ignore">
+          <ui:Label name="unit-trigger" text="攻击时" class="ability-trigger" picking-mode="Ignore" />
+          <ui:VisualElement name="unit-ability-icon" class="ability-icon" picking-mode="Ignore" />
+          <ui:Label name="unit-ability-amount" text="+1" class="ability-amount" picking-mode="Ignore" />
+        </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
   </ui:VisualElement>

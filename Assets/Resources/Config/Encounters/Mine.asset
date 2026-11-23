@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Mine
   m_EditorClassIdentifier:
   displayName: "红炭矿井"
-  landscape: {fileID: 2800000, guid: a775746dfb495c40b401194815e672d3, type: 3}
+  landscape: {fileID: 2800000, guid: b3b867e359bc65e489921d0c8ca55a97, type: 3}
   briefing: "注意受击发辣椒的辣女巫，最后分排应对大脚怪的扫射。"
   reinforcementInterval: 4
   waves:

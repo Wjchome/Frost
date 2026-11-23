@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Watchtower
   m_EditorClassIdentifier:
   displayName: "风站哨塔"
-  landscape: {fileID: 2800000, guid: 301133f7807451608cb321476f8fa588, type: 3}
+  landscape: {fileID: 2800000, guid: aa4eee22f9b7a2140b186b5118138397, type: 3}
   briefing: "大黏黏受击送出黏黏水果，卡牌被摧毁时粘粘加攻。"
   reinforcementInterval: 4
   waves:

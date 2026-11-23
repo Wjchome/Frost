@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "雪卷卷"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 4ca40345e756e774fa12b54240c2de50, type: 3}
+  portrait: {fileID: 2800000, guid: 9fc6ff64976110a42b65785370edc89d, type: 3}
   action: 0
   health: 5
   power: 2

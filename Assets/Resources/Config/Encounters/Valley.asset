@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Valley
   m_EditorClassIdentifier:
   displayName: "风蚀雪谷"
-  landscape: {fileID: 2800000, guid: 9d39c928adeb49dd9e83fd3226cec515, type: 3}
+  landscape: {fileID: 2800000, guid: befa95866e7127543b70f0cea0625583, type: 3}
   briefing: "雪狼命中施加雪球，雪刺猬会扫射同排。"
   reinforcementInterval: 4
   waves:

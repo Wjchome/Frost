@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "大法杖"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 462c04e4e4f62eb4c8ff705e22c51d6e, type: 3}
+  portrait: {fileID: 2800000, guid: 1e2648d0f0c00b643b64c4dd5415f599, type: 3}
   action: 7
   effect: 19
   amount: 1

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: FurnaceCaptain
   m_EditorClassIdentifier:
   displayName: "炉心卫长"
-  portrait: {fileID: 2800000, guid: 4ca40345e756e774fa12b54240c2de50, type: 3}
+  portrait: {fileID: 2800000, guid: 14b57ff7a38e6b24db8a36c874ca277a, type: 3}
   action: 0
   power: 2
   health: 13

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "粉法杖"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 462c04e4e4f62eb4c8ff705e22c51d6e, type: 3}
+  portrait: {fileID: 2800000, guid: e3bf8e51abe11c44595a91c8c334dcb0, type: 3}
   action: 7
   effect: 1
   amount: 1

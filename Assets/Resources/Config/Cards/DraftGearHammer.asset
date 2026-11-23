@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "机械锤"
   catalogGroup: "垃圾人"
-  portrait: {fileID: 2800000, guid: b402e03af17950eaa14110b11a92508a, type: 3}
+  portrait: {fileID: 2800000, guid: 3b9108575ed6a8b4693bd36846850a73, type: 3}
   action: 7
   effect: 0
   amount: 0

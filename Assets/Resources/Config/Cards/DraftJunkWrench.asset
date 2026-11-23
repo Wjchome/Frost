@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "垃圾扳手"
   catalogGroup: "垃圾人"
-  portrait: {fileID: 2800000, guid: 0a9dd5893fe5450783155f1790a8adcf, type: 3}
+  portrait: {fileID: 2800000, guid: 4bdc5a4b659178a488ef211b7e4b9dd2, type: 3}
   action: 7
   effect: 21
   amount: 2

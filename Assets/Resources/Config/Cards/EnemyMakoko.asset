@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "麻可可"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 89f682637260c674fa76a3ccef7477a5, type: 3}
+  portrait: {fileID: 2800000, guid: 1064c17de5a5b294a8917fbc2c178bce, type: 3}
   action: 0
   health: 8
   power: 0

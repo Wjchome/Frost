@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: WhitewindCaptain
   m_EditorClassIdentifier:
   displayName: "白风领队"
-  portrait: {fileID: 2800000, guid: 2036455cfe01610449480cc7a1800b10, type: 3}
+  portrait: {fileID: 2800000, guid: a97426d9e2c6bc74aaf0536234dd25bc, type: 3}
   action: 0
   power: 2
   health: 11

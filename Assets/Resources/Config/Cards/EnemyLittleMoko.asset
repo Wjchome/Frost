@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "小莫科"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 2036455cfe01610449480cc7a1800b10, type: 3}
+  portrait: {fileID: 2800000, guid: ca33617e4a3502742be6ba9716bca769, type: 3}
   action: 0
   health: 6
   power: 1

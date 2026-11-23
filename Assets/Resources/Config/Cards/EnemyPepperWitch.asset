@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "辣女巫"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 295a12758ce86984c97f4dbfc2dfb58b, type: 3}
+  portrait: {fileID: 2800000, guid: 3af88ef77e24bea4dbb12dd9615daf17, type: 3}
   action: 0
   health: 8
   power: 1

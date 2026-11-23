@@ -525,7 +525,7 @@ namespace Frostline
 
         private void Render()
         {
-            Paint(background, game?.Location.Landscape ?? "Art/cover");
+            Paint(background, game?.Location.Landscape ?? "Art/Expedition/Cover");
             titleScreen.style.display = showingTitle ? DisplayStyle.Flex : DisplayStyle.None;
             battleHud.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
             if (showingTitle)
@@ -1703,7 +1703,7 @@ namespace Frostline
             if (!textures.TryGetValue(name, out var texture))
             {
                 texture = Resources.Load<Texture2D>(name);
-                if (texture != null)
+                if (texture != null && !name.StartsWith("Art/Expedition/", StringComparison.Ordinal))
                     texture.filterMode = name.StartsWith("CardArt/", StringComparison.Ordinal) ? FilterMode.Bilinear : FilterMode.Point;
                 textures.Add(name, texture);
             }

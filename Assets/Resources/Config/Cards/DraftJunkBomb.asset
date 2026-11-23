@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "垃圾炸弹"
   catalogGroup: "垃圾人"
-  portrait: {fileID: 2800000, guid: 0769cf091d274dbea24e064ba53ccb39, type: 3}
+  portrait: {fileID: 2800000, guid: 6ebe744ddf9dc34458184b39a7f46d20, type: 3}
   action: 7
   effect: 0
   amount: 0

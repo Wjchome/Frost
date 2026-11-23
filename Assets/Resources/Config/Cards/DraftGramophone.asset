@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "留声机"
   catalogGroup: "垃圾人"
-  portrait: {fileID: 2800000, guid: 0a9dd5893fe5450783155f1790a8adcf, type: 3}
+  portrait: {fileID: 2800000, guid: f7c71396c63163a43a1b50a0a919200b, type: 3}
   action: 7
   effect: 15
   amount: 1

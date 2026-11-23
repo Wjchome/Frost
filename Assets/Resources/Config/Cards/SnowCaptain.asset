@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SnowCaptain
   m_EditorClassIdentifier:
   displayName: "霜径领航员"
-  portrait: {fileID: 2800000, guid: 2036455cfe01610449480cc7a1800b10, type: 3}
+  portrait: {fileID: 2800000, guid: bb237b94555558945b7a3fa87d23b4e9, type: 3}
   action: 0
   power: 2
   health: 12

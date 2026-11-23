@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SparkCaptain
   m_EditorClassIdentifier:
   displayName: "引弧师"
-  portrait: {fileID: 2800000, guid: 89f682637260c674fa76a3ccef7477a5, type: 3}
+  portrait: {fileID: 2800000, guid: a39d9af643f8a9548a3c0cb7d538ee6e, type: 3}
   action: 0
   power: 3
   health: 11

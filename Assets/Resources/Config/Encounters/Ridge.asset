@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ridge
   m_EditorClassIdentifier:
   displayName: "白脊风口"
-  landscape: {fileID: 2800000, guid: 27154edcaa3f47f4869abf83be35624d, type: 3}
+  landscape: {fileID: 2800000, guid: 9dceb72c5d11d5242a0384a4ef1c24a4, type: 3}
   briefing: "雪卷卷会反击。雪伯伯远射施加雪球，雪吞吞借雪球加攻。"
   reinforcementInterval: 3
   waves:

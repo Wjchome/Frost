@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Dye
   m_EditorClassIdentifier:
   displayName: "染墨瓶"
-  portrait: {fileID: 2800000, guid: 60ca70aa9c9a4b98b4a9be4b9a78f43a, type: 3}
+  portrait: {fileID: 2800000, guid: 443df91a79bbf6548ae3ab63af9a5690, type: 3}
   action: 5
   effect: 6
   amount: 4

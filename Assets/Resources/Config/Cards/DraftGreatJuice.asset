@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "大粉汁"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: e95f7a0cfb0baf94b99d798c9846bed8, type: 3}
+  portrait: {fileID: 2800000, guid: b81bfde8b308a32428ae5e8983239698, type: 3}
   action: 7
   effect: 1
   amount: 1

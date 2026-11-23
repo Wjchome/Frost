@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "雪波波"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 42f00424a859a68428233d502d347a6c, type: 3}
+  portrait: {fileID: 2800000, guid: 3443dd0fcd37d4244850be98a763da58, type: 3}
   action: 0
   health: 4
   power: 1

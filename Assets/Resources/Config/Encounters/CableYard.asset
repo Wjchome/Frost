@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: CableYard
   m_EditorClassIdentifier:
   displayName: "断索工段"
-  landscape: {fileID: 2800000, guid: 5a7f1e9ae96c571aadfec3bccd6d28a5, type: 3}
+  landscape: {fileID: 2800000, guid: 9848544a26586d74795ddcaf2c11e2fb, type: 3}
   briefing: "快快躲在山胡桃身后，给全队加攻。"
   reinforcementInterval: 4
   waves:

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "山胡桃"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 4ca40345e756e774fa12b54240c2de50, type: 3}
+  portrait: {fileID: 2800000, guid: 07d176ef933ddd84eb4036ad0bc69c31, type: 3}
   action: 0
   health: 6
   power: 4

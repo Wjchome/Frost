@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "雪努努"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: c091997d260a01246bef52806d06a604, type: 3}
+  portrait: {fileID: 2800000, guid: 8a7664bce65e3ba43b9d252d731a41bd, type: 3}
   action: 0
   health: 5
   power: 2

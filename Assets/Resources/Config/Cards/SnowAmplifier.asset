@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "增伤者"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 295a12758ce86984c97f4dbfc2dfb58b, type: 3}
+  portrait: {fileID: 2800000, guid: d0e2775a626f20e4d923e4025431361f, type: 3}
   action: 0
   health: 3
   power: 4

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "大黏黏"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: d65c99438bab4c2489a58c2a3da6dea7, type: 3}
+  portrait: {fileID: 2800000, guid: 23fb299c9bdf213459c4c10dd000cd9e, type: 3}
   action: 0
   health: 10
   power: 4

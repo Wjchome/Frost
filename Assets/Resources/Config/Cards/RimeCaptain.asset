@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: RimeCaptain
   m_EditorClassIdentifier:
   displayName: "霜刃队长"
-  portrait: {fileID: 2800000, guid: 4ca40345e756e774fa12b54240c2de50, type: 3}
+  portrait: {fileID: 2800000, guid: ddaed764ff6435742a08125f786f3bcb, type: 3}
   action: 0
   power: 3
   health: 11

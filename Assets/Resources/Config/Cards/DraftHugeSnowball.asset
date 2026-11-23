@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "巨大雪球"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 8bd762be68a95b642a3bb2e7dc53630d, type: 3}
+  portrait: {fileID: 2800000, guid: f638f0ea2254e9849a2462f71ca37c0e, type: 3}
   action: 7
   effect: 3
   amount: 10

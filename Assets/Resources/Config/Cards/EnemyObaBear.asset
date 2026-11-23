@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "欧巴熊"
   catalogGroup: "敌人"
-  portrait: {fileID: 2800000, guid: 42f00424a859a68428233d502d347a6c, type: 3}
+  portrait: {fileID: 2800000, guid: c2a7490fb8a8a834b9b0cbdd73645784, type: 3}
   action: 0
   health: 6
   power: 4

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "抽卡者"
   catalogGroup: "雪人"
-  portrait: {fileID: 2800000, guid: 2036455cfe01610449480cc7a1800b10, type: 3}
+  portrait: {fileID: 2800000, guid: caa45e40307aacd4ca18d569d7f0b20e, type: 3}
   action: 0
   health: 6
   power: 2
