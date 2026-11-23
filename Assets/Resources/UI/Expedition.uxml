@@ -8,7 +8,10 @@
       </ui:VisualElement>
       <ui:VisualElement class="encounter">
         <ui:Label name="turn" class="turn" />
-        <ui:Label name="wave" class="wave" />
+        <ui:VisualElement>
+          <ui:Label name="wave" class="wave" />
+          <ui:Label name="wave-units" class="wave-units" />
+        </ui:VisualElement>
       </ui:VisualElement>
       <ui:VisualElement class="top-actions">
         <ui:Button name="action-order" text="行动顺序 [Tab]" class="button top-button" />

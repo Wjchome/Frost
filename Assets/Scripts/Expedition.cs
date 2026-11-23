@@ -3,26 +3,78 @@ using System.Collections.Generic;
 
 namespace Frostline
 {
-    public enum CardAction { Deploy, Strike, Freeze, Heal, Hasten }
+    public enum CardAction { Deploy, Strike, Freeze, Heal, Hasten, ApplyEffect }
     public enum BattlePhase { Planning, Resolving, Won, Lost }
-    public enum BattleEffect { Windup, Attack, Ice, Recovery, Arrival, Guard }
+    public enum BattleEffect { Windup, Attack, Ice, Recovery, Arrival, Guard, Status, Burst }
     public enum AttackPattern { Front, Barrage, Longshot, Aimless }
-    public enum UnitSkill { None, DeployShell, HealOnKill, SnowOnHit }
+    public enum EffectTrigger { Deploy, Hit, Kill }
+    public enum EffectKind { None, Heal, Shell, Snow, Spice, Overload, Ink, Weakness, Block, EffectBonus }
+
+    public readonly struct UnitAbility
+    {
+        public readonly EffectTrigger Trigger;
+        public readonly EffectKind Effect;
+        public readonly int Amount;
+
+        public UnitAbility(EffectTrigger trigger, EffectKind effect, int amount) =>
+            (Trigger, Effect, Amount) = (trigger, effect, amount);
+
+        public string Describe(int bonus)
+        {
+            string timing = Trigger switch
+            {
+                EffectTrigger.Deploy => "部署",
+                EffectTrigger.Hit => "命中",
+                EffectTrigger.Kill => "击倒",
+                _ => ""
+            };
+            string effect = Effect == EffectKind.Heal ? "回血" : Effects.Name(Effect);
+            return $"{timing} · {effect} +{Amount + bonus}";
+        }
+    }
+
+    public static class Effects
+    {
+        public static string Name(EffectKind effect) => effect switch
+        {
+            EffectKind.Heal => "生命",
+            EffectKind.Shell => "护壳",
+            EffectKind.Snow => "雪球",
+            EffectKind.Spice => "辣椒",
+            EffectKind.Overload => "过载",
+            EffectKind.Ink => "墨水",
+            EffectKind.Weakness => "虚弱",
+            EffectKind.Block => "格挡",
+            EffectKind.EffectBonus => "效果",
+            _ => ""
+        };
+
+        public static string Rule(EffectKind effect) => effect switch
+        {
+            EffectKind.Spice => "每层使攻击 +1，打完整次攻击后清除。",
+            EffectKind.Overload => "层数达到当前生命时引爆，对自身和同排队友造成等量伤害。",
+            EffectKind.Ink => "停用触发能力，每回合结束减少 1 层。",
+            EffectKind.Weakness => "每层使攻击 −1（最低为 0），打完整次攻击后清除。",
+            EffectKind.Block => "每层抵消一次伤害，先于护壳消耗。",
+            EffectKind.EffectBonus => "本场战斗提升触发能力的数值，撤回后保留。",
+            _ => ""
+        };
+    }
 
     public sealed class UnitType
     {
         public readonly string Name, Art;
         public readonly int Power, Health, Period, Frenzy;
         public readonly AttackPattern Pattern;
-        public readonly UnitSkill Skill;
+        public readonly UnitAbility Ability;
         public readonly bool ResistSnow;
 
         public UnitType(string name, string art, int power, int health, int period,
             AttackPattern pattern = AttackPattern.Front, int frenzy = 1,
-            UnitSkill skill = UnitSkill.None, bool resistSnow = false)
+            UnitAbility ability = default, bool resistSnow = false)
         {
             (Name, Art, Power, Health, Period) = (name, art, power, health, period);
-            (Pattern, Frenzy, Skill, ResistSnow) = (pattern, frenzy, skill, resistSnow);
+            (Pattern, Frenzy, Ability, ResistSnow) = (pattern, frenzy, ability, resistSnow);
         }
     }
 
@@ -31,6 +83,8 @@ namespace Frostline
         public readonly UnitType Type;
         public readonly bool Leader;
         public int Health, Counter, Frozen, Shell;
+        public int Spice, Overload, Ink, Weakness, Block, EffectBonus;
+        public int Attack => Math.Max(0, Type.Power + Spice - Weakness);
 
         public Unit(UnitType type, bool leader = false)
         {
@@ -45,21 +99,40 @@ namespace Frostline
 
     public sealed class Card
     {
-        public readonly string Name, Art, Description;
+        public readonly string Name, Art;
         public readonly CardAction Action;
         public readonly int Amount, Damage;
+        public readonly EffectKind Effect;
+        public readonly bool TargetsEnemy;
         public int DeploymentHealth { get; }
+        public int DeploymentEffectBonus { get; }
         public readonly UnitType Unit;
 
-        public Card(UnitType unit, int? deploymentHealth = null) : this(unit.Name, unit.Art, CardAction.Deploy, 0, "部署到己方空位。")
+        public string Description => Action switch
+        {
+            CardAction.Deploy => "部署到己方空位。",
+            CardAction.Strike => $"造成 {Damage} 点伤害。",
+            CardAction.Freeze => $"造成 {Damage} 点伤害，施加 {Amount} 层雪球。",
+            CardAction.Heal => $"全体友方恢复 {Amount} 点生命并清除雪球。",
+            CardAction.Hasten => $"倒计时减少 {Amount}，归零立刻行动。",
+            CardAction.ApplyEffect when Effect == EffectKind.EffectBonus => $"使一名友方的触发能力数值 +{Amount}。",
+            CardAction.ApplyEffect => $"给{(TargetsEnemy ? "敌方" : "友方")}施加 {Effects.Name(Effect)} +{Amount}。",
+            _ => ""
+        };
+
+        public Card(UnitType unit, int? deploymentHealth = null, int effectBonus = 0)
+            : this(unit.Name, unit.Art, CardAction.Deploy, 0)
         {
             Unit = unit;
             DeploymentHealth = deploymentHealth ?? unit.Health;
+            DeploymentEffectBonus = effectBonus;
         }
 
-        public Card(string name, string art, CardAction action, int amount, string description, int damage = 0)
+        public Card(string name, string art, CardAction action, int amount, int damage = 0,
+            EffectKind effect = EffectKind.None, bool targetsEnemy = false)
         {
-            (Name, Art, Action, Amount, Description, Damage) = (name, art, action, amount, description, damage);
+            (Name, Art, Action, Amount, Damage) = (name, art, action, amount, damage);
+            (Effect, TargetsEnemy) = (effect, targetsEnemy);
         }
     }
 
@@ -100,23 +173,36 @@ namespace Frostline
 
     public static class Catalog
     {
-        public static readonly UnitType Captain = new("岚哨长", "scout", 3, 12, 3, skill: UnitSkill.HealOnKill);
-        public static readonly UnitType Guide = new("渡崖人", "porter", 2, 9, 3, skill: UnitSkill.DeployShell);
-        public static readonly UnitType Chipper = new("凿冰师", "mechanic", 4, 6, 3, pattern: AttackPattern.Barrage);
+        public static readonly UnitType Captain = new("岚哨长", "scout", 3, 12, 3,
+            ability: new(EffectTrigger.Kill, EffectKind.Heal, 2));
+        public static readonly UnitType Guide = new("渡崖人", "porter", 2, 9, 3,
+            ability: new(EffectTrigger.Deploy, EffectKind.Shell, 2));
+        public static readonly UnitType Chipper = new("凿冰师", "mechanic", 4, 6, 3, pattern: AttackPattern.Barrage,
+            ability: new(EffectTrigger.Hit, EffectKind.Overload, 2));
         public static readonly UnitType Runner = new("飞索信使", "courier", 2, 5, 2, frenzy: 2);
         public static readonly UnitType Hound = new("风窟兽", "hound", 2, 5, 3, pattern: AttackPattern.Aimless);
         public static readonly UnitType Probe = new("冰隙蜂", "drone", 1, 4, 2, pattern: AttackPattern.Longshot);
-        public static readonly UnitType Guard = new("崖脊卫", "warden", 3, 7, 3, skill: UnitSkill.SnowOnHit);
-        public static readonly UnitType Boss = new("裂谷巨像", "ram", 3, 15, 4, pattern: AttackPattern.Barrage, resistSnow: true);
+        public static readonly UnitType Guard = new("崖脊卫", "warden", 3, 7, 3,
+            ability: new(EffectTrigger.Hit, EffectKind.Snow, 1));
+        public static readonly UnitType Boss = new("裂谷巨像", "ram", 3, 15, 4, pattern: AttackPattern.Barrage,
+            ability: new(EffectTrigger.Hit, EffectKind.Ink, 2), resistSnow: true);
 
-        public static readonly Card Spear = new("破冰矛", "spear", CardAction.Strike, 0, "造成 2 点伤害。", damage: 2);
-        public static readonly Card Chill = new("冷凝罐", "chill", CardAction.Freeze, 2, "造成 1 点伤害，施加 2 层雪球。", damage: 1);
-        public static readonly Card Patch = new("急救包", "repair", CardAction.Heal, 2, "全体友方恢复 2 点生命并清除雪球。");
-        public static readonly Card Whistle = new("催行哨", "whistle", CardAction.Hasten, 2, "倒计时减少 2，归零立刻行动。");
+        public static readonly Card Spear = new("破冰矛", "spear", CardAction.Strike, 0, damage: 2);
+        public static readonly Card Chill = new("冷凝罐", "chill", CardAction.Freeze, 2, damage: 1);
+        public static readonly Card Patch = new("急救包", "repair", CardAction.Heal, 2);
+        public static readonly Card Whistle = new("催行哨", "whistle", CardAction.Hasten, 2);
+        public static readonly Card ChiliOil = new("辛辣油", null, CardAction.ApplyEffect, 3, effect: EffectKind.Spice);
+        public static readonly Card Flux = new("电荷罐", null, CardAction.ApplyEffect, 4, effect: EffectKind.Overload, targetsEnemy: true);
+        public static readonly Card Dye = new("染墨瓶", null, CardAction.ApplyEffect, 3, effect: EffectKind.Ink, targetsEnemy: true);
+        public static readonly Card Calibration = new("校准尺", null, CardAction.ApplyEffect, 1, effect: EffectKind.EffectBonus);
+        public static readonly Card Brace = new("应急盾", null, CardAction.ApplyEffect, 2, effect: EffectKind.Block);
+        public static readonly Card Dulling = new("钝化粉", null, CardAction.ApplyEffect, 3, effect: EffectKind.Weakness, targetsEnemy: true);
 
         public static readonly Card[] Starter =
         {
-            new(Guide), Spear, Chill, new(Runner), Patch, Whistle, Spear, Chill, new(Chipper), Patch
+            new(Guide), Spear, Chill, new(Runner), Patch, Whistle,
+            ChiliOil, Flux, Dye, Calibration, Brace, Dulling,
+            new(Chipper), Chill, Spear, Patch
         };
     }
 
@@ -129,13 +215,15 @@ namespace Frostline
         public const int WaveSize = 3;
         private const int RecallHealing = 5;
         private const int WaveInterval = 4;
+        private static readonly IReadOnlyList<UnitType> SecondWave = Array.AsReadOnly(new[] { Catalog.Guard, Catalog.Hound });
+        private static readonly IReadOnlyList<UnitType> FinalWave = Array.AsReadOnly(new[] { Catalog.Boss, Catalog.Probe });
 
         private Unit[,,] board = new Unit[2, Rows, Slots];
         private uint targetRandom = 0x890ca3a1;
         private readonly Random random = new(2471);
         private readonly List<Card> draw = new(Catalog.Starter);
-        private readonly List<Card> discard = new();
-        private readonly List<Card> hand = new();
+        private List<Card> discard = new();
+        private List<Card> hand = new();
 
         public BattlePhase Phase { get; private set; }
         public int Turn { get; private set; } = 1;
@@ -148,6 +236,12 @@ namespace Frostline
         public IReadOnlyList<Card> Hand => hand;
         public int DrawCount => draw.Count;
         public int DiscardCount => discard.Count;
+        public IReadOnlyList<UnitType> NextWave => Wave switch
+        {
+            1 => SecondWave,
+            2 => FinalWave,
+            _ => Array.Empty<UnitType>()
+        };
 
         public Expedition()
         {
@@ -164,12 +258,15 @@ namespace Frostline
                 return false;
 
             Unit unit = At(pos);
-            return hand[index].Action switch
+            Card card = hand[index];
+            return card.Action switch
             {
                 CardAction.Deploy => !pos.Enemy && unit == null,
                 CardAction.Strike or CardAction.Freeze => pos.Enemy && unit != null,
                 CardAction.Heal => !pos.Enemy && unit != null,
                 CardAction.Hasten => !pos.Enemy && unit != null && unit.Counter > 0 && unit.Frozen == 0,
+                CardAction.ApplyEffect => pos.Enemy == card.TargetsEnemy && unit != null &&
+                    (card.Effect != EffectKind.EffectBonus || unit.Type.Ability.Effect != EffectKind.None),
                 _ => false
             };
         }
@@ -198,7 +295,8 @@ namespace Frostline
             if (!CanPlay(index, anchor))
                 return Array.Empty<Position>();
 
-            if (hand[index].Action == CardAction.Heal)
+            Card card = hand[index];
+            if (card.Action == CardAction.Heal)
             {
                 var targets = new List<Position>();
                 foreach (Position pos in TurnOrder())
@@ -208,28 +306,44 @@ namespace Frostline
                 }
                 return targets;
             }
+            if (card.Effect == EffectKind.Overload && At(anchor).Overload + card.Amount >= At(anchor).Health)
+                return OccupiedRow(anchor);
             return new[] { anchor };
         }
 
-        public IReadOnlyList<Position> ForecastOrder()
+        public (IReadOnlyList<Position> Actions, IReadOnlyList<(Position Position, UnitType Unit)> Arrivals) ForecastTurn(
+            int cardIndex, Position? target)
         {
-            var order = new List<Position>();
+            var actions = new List<Position>();
+            var arrivals = new List<(Position, UnitType)>();
             if (Opening || Phase != BattlePhase.Planning)
-                return order;
+                return (actions, arrivals);
 
-            // Resolve the next natural countdown on a copy. Only the battlefield and primitive
-            // fields are touched by Resolve, including the independent Aimless random state.
+            // After opening deployment, playing a card does not touch the draw pile or shuffle RNG.
+            // Aimless uses a value-type RNG state, so forecasting does not consume a live roll.
             var forecast = (Expedition)MemberwiseClone();
             forecast.board = new Unit[2, Rows, Slots];
             foreach (Position pos in TurnOrder())
                 forecast.Set(pos, At(pos)?.Copy());
 
-            foreach (BattleBeat step in forecast.Resolve())
+            IEnumerable<BattleBeat> steps;
+            if (target.HasValue && CanPlay(cardIndex, target.Value))
             {
-                if (step.Effect == BattleEffect.Windup && !order.Contains(step.Source))
-                    order.Add(step.Source);
+                forecast.hand = new List<Card>(hand);
+                forecast.discard = new List<Card>(discard);
+                steps = forecast.Play(cardIndex, target.Value);
             }
-            return order;
+            else
+                steps = forecast.Resolve();
+
+            foreach (BattleBeat step in steps)
+            {
+                if (step.Effect == BattleEffect.Windup && !step.CardStrike && !actions.Contains(step.Source))
+                    actions.Add(step.Source);
+                if (step.Effect == BattleEffect.Arrival && step.Target.Enemy)
+                    arrivals.Add((step.Target, forecast.At(step.Target).Type));
+            }
+            return (actions, arrivals);
         }
 
         private static IEnumerable<Position> TurnOrder()
@@ -268,7 +382,7 @@ namespace Frostline
 
             Unit unit = At(source);
             int health = Math.Min(unit.Type.Health, unit.Health + RecallHealing);
-            discard.Add(new Card(unit.Type, health));
+            discard.Add(new Card(unit.Type, health, unit.EffectBonus));
             Set(source, null);
             Notice = $"{unit.Type.Name}撤回，恢复至 {health} 点生命。";
             return true;
@@ -286,7 +400,11 @@ namespace Frostline
             switch (card.Action)
             {
                 case CardAction.Deploy:
-                    var deployed = new Unit(card.Unit, leader: Opening) { Health = card.DeploymentHealth };
+                    var deployed = new Unit(card.Unit, leader: Opening)
+                    {
+                        Health = card.DeploymentHealth,
+                        EffectBonus = card.DeploymentEffectBonus
+                    };
                     Set(target, deployed);
                     Notice = $"{card.Name}上场。";
                     yield return new BattleBeat(target, target, BattleEffect.Arrival, "部署");
@@ -298,20 +416,21 @@ namespace Frostline
                         Phase = BattlePhase.Planning;
                         yield break;
                     }
-                    if (deployed.Type.Skill == UnitSkill.DeployShell)
-                    {
-                        deployed.Shell += 2;
-                        Notice = $"{card.Name}获得 2 点护壳。";
-                        yield return new BattleBeat(target, target, BattleEffect.Guard, "护壳 +2");
-                    }
+                    foreach (BattleBeat effect in TriggerAbility(target, target, deployed, EffectTrigger.Deploy))
+                        yield return effect;
                     break;
                 case CardAction.Strike:
                 case CardAction.Freeze:
                     Notice = $"{card.Name}准备命中{unit.Type.Name}。";
                     yield return new BattleBeat(target, target, BattleEffect.Windup, card.Name, cardStrike: true);
                     yield return Hit(target, target, card.Damage, card.Name);
+                    foreach (BattleBeat burst in CheckOverload(target))
+                        yield return burst;
                     if (card.Action == CardAction.Freeze && At(target) != null)
-                        yield return ApplySnow(target, target, unit, card.Amount);
+                    {
+                        foreach (BattleBeat effect in ApplyEffect(target, target, EffectKind.Snow, card.Amount))
+                            yield return effect;
+                    }
                     break;
                 case CardAction.Heal:
                     foreach (BattleBeat recovery in HealAll(card.Amount))
@@ -327,9 +446,15 @@ namespace Frostline
                             yield return attack;
                     }
                     break;
+                case CardAction.ApplyEffect:
+                    foreach (BattleBeat effect in ApplyEffect(target, target, card.Effect, card.Amount))
+                        yield return effect;
+                    break;
             }
             if (card.Action != CardAction.Deploy)
                 discard.Add(card);
+            if (Phase == BattlePhase.Lost)
+                yield break;
             foreach (BattleBeat beat in Resolve())
                 yield return beat;
         }
@@ -387,6 +512,11 @@ namespace Frostline
 
             foreach (Unit unit in snowedAtCountdown)
                 unit.Frozen = Math.Max(0, unit.Frozen - 1);
+            foreach (Position pos in TurnOrder())
+            {
+                if (At(pos) is Unit unit && unit.Ink > 0)
+                    unit.Ink--;
+            }
             if (tickRefresh)
                 Refresh = Math.Max(0, Refresh - 1);
             if (Wave < WaveSize && (--Reinforcements == 0 || !HasEnemies()))
@@ -402,12 +532,14 @@ namespace Frostline
         private IEnumerable<BattleBeat> Trigger(Position source, Unit attacker)
         {
             attacker.Counter = attacker.Type.Period;
+            bool attacked = false;
             for (int hit = 1; hit <= attacker.Type.Frenzy && attacker.Frozen == 0; hit++)
             {
                 IReadOnlyList<Position> targets = AttackTargets(source, attacker.Type);
                 if (targets.Count == 0)
-                    yield break;
+                    break;
 
+                attacked = true;
                 if (attacker.Type.Pattern == AttackPattern.Aimless && targets.Count > 1)
                     targets = new[] { targets[RollTarget(targets.Count)] };
 
@@ -420,7 +552,7 @@ namespace Frostline
                 var marks = new List<string>(targets.Count);
                 foreach (Position target in targets)
                 {
-                    marks.Add(Hit(source, target, attacker.Type.Power, attacker.Type.Name).Mark);
+                    marks.Add(Hit(source, target, attacker.Attack, attacker.Type.Name).Mark);
                     if (At(target) == null)
                         defeated++;
                 }
@@ -434,26 +566,34 @@ namespace Frostline
                     yield break;
                 }
 
-                if (attacker.Type.Skill == UnitSkill.SnowOnHit)
+                foreach (Position target in targets)
                 {
-                    foreach (Position target in targets)
-                    {
-                        if (At(target) is Unit survivor)
-                            yield return ApplySnow(source, target, survivor, 1);
-                    }
+                    foreach (BattleBeat burst in CheckOverload(target))
+                        yield return burst;
+                    foreach (BattleBeat effect in TriggerAbility(source, target, attacker, EffectTrigger.Hit))
+                        yield return effect;
+                    if (Phase == BattlePhase.Lost)
+                        yield break;
                 }
 
-                if (attacker.Type.Skill == UnitSkill.HealOnKill && defeated > 0)
-                {
-                    int healed = Math.Min(attacker.Type.Health - attacker.Health, defeated * 2);
-                    if (healed > 0)
-                    {
-                        attacker.Health += healed;
-                        Notice = $"{attacker.Type.Name}击倒敌人，恢复 {healed} 点生命。";
-                        yield return new BattleBeat(source, source, BattleEffect.Recovery, $"生命 +{healed}");
-                    }
-                }
+                if (defeated > 0)
+                    foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.Kill, defeated))
+                        yield return effect;
             }
+
+            if (attacked)
+            {
+                attacker.Spice = 0;
+                attacker.Weakness = 0;
+            }
+        }
+
+        private IEnumerable<BattleBeat> TriggerAbility(Position source, Position target, Unit unit, EffectTrigger trigger, int times = 1)
+        {
+            UnitAbility ability = unit.Type.Ability;
+            if (unit.Ink > 0 || ability.Effect == EffectKind.None || ability.Trigger != trigger)
+                return Array.Empty<BattleBeat>();
+            return ApplyEffect(source, target, ability.Effect, (ability.Amount + unit.EffectBonus) * times);
         }
 
         public static string PatternName(AttackPattern pattern) => pattern switch
@@ -472,13 +612,79 @@ namespace Frostline
             return (int)(targetRandom % (uint)count);
         }
 
-        private BattleBeat ApplySnow(Position source, Position target, Unit unit, int amount)
+        private IEnumerable<BattleBeat> ApplyEffect(Position source, Position target, EffectKind effect, int amount)
         {
-            int snow = unit.Type.ResistSnow ? Math.Min(1, unit.Frozen + amount) : unit.Frozen + amount;
-            int added = snow - unit.Frozen;
-            unit.Frozen = snow;
-            Notice = added > 0 ? $"{unit.Type.Name}获得 {added} 层雪球。" : $"{unit.Type.Name}的雪球已达上限。";
-            return new BattleBeat(source, target, BattleEffect.Ice, added > 0 ? $"雪球 +{added}" : "抗雪球");
+            Unit unit = At(target);
+            if (unit == null)
+                yield break;
+
+            BattleEffect feedback = BattleEffect.Status;
+            switch (effect)
+            {
+                case EffectKind.Heal:
+                    amount = Math.Min(amount, unit.Type.Health - unit.Health);
+                    if (amount == 0)
+                        yield break;
+                    unit.Health += amount;
+                    feedback = BattleEffect.Recovery;
+                    break;
+                case EffectKind.Shell:
+                    unit.Shell += amount;
+                    feedback = BattleEffect.Guard;
+                    break;
+                case EffectKind.Snow:
+                    if (unit.Type.ResistSnow)
+                        amount = Math.Min(amount, 1 - unit.Frozen);
+                    unit.Frozen += amount;
+                    feedback = BattleEffect.Ice;
+                    break;
+                case EffectKind.Spice: unit.Spice += amount; break;
+                case EffectKind.Overload: unit.Overload += amount; break;
+                case EffectKind.Ink: unit.Ink += amount; break;
+                case EffectKind.Weakness: unit.Weakness += amount; break;
+                case EffectKind.Block: unit.Block += amount; break;
+                case EffectKind.EffectBonus: unit.EffectBonus += amount; break;
+                default: yield break;
+            }
+
+            string label = amount == 0 ? "抗雪球" : $"{Effects.Name(effect)} +{amount}";
+            Notice = $"{unit.Type.Name} · {label}";
+            yield return new BattleBeat(source, target, feedback, label);
+            if (effect == EffectKind.Overload)
+                foreach (BattleBeat burst in CheckOverload(target))
+                    yield return burst;
+        }
+
+        private List<Position> OccupiedRow(Position anchor)
+        {
+            var targets = new List<Position>(Slots);
+            for (int slot = 0; slot < Slots; slot++)
+            {
+                var pos = new Position(anchor.Enemy, anchor.Row, slot);
+                if (At(pos) != null)
+                    targets.Add(pos);
+            }
+            return targets;
+        }
+
+        private IEnumerable<BattleBeat> CheckOverload(Position origin)
+        {
+            Unit unit = At(origin);
+            if (unit == null || unit.Overload < unit.Health || Phase == BattlePhase.Lost)
+                yield break;
+
+            int damage = unit.Overload;
+            unit.Overload = 0;
+            List<Position> targets = OccupiedRow(origin);
+            var marks = new List<string>(targets.Count);
+            foreach (Position target in targets)
+                marks.Add(Hit(origin, target, damage, "过载").Mark);
+            Notice = Phase == BattlePhase.Lost ? "岚哨长倒下。" : $"{unit.Type.Name}过载引爆 · 同排伤害 {damage}";
+            yield return new BattleBeat(origin, origin, BattleEffect.Burst, "过载", targets, impactMarks: marks);
+
+            foreach (Position target in targets)
+                foreach (BattleBeat burst in CheckOverload(target))
+                    yield return burst;
         }
 
         private IEnumerable<BattleBeat> HealAll(int amount)
@@ -506,13 +712,12 @@ namespace Frostline
 
         private IEnumerable<BattleBeat> Reinforce()
         {
+            IReadOnlyList<UnitType> units = NextWave;
             ++Wave;
             Reinforcements = WaveInterval;
             Notice = Wave == WaveSize ? "裂谷巨像现身，会攻击同排所有队员。" : "第二波敌人抵达。";
-            UnitType first = Wave == WaveSize ? Catalog.Boss : Catalog.Guard;
-            UnitType second = Wave == WaveSize ? Catalog.Probe : Catalog.Hound;
-            yield return AddEnemy(0, first);
-            yield return AddEnemy(1, second);
+            for (int row = 0; row < units.Count; row++)
+                yield return AddEnemy(row, units[row]);
         }
 
         private BattleBeat AddEnemy(int row, UnitType type)
@@ -534,6 +739,13 @@ namespace Frostline
         private BattleBeat Hit(Position source, Position target, int amount, string name)
         {
             Unit victim = At(target);
+            if (amount > 0 && victim.Block > 0)
+            {
+                victim.Block--;
+                Notice = $"{victim.Type.Name}消耗 1 层格挡，抵消 {amount} 点伤害。";
+                return new BattleBeat(source, target, BattleEffect.Attack, "格挡 −1");
+            }
+
             int absorbed = Math.Min(victim.Shell, amount);
             victim.Shell -= absorbed;
             int healthDamage = amount - absorbed;
@@ -553,7 +765,7 @@ namespace Frostline
                     Notice += "目标退场。";
             }
 
-            string mark = healthDamage > 0 ? $"−{healthDamage}" : $"护壳 −{absorbed}";
+            string mark = healthDamage > 0 ? $"−{healthDamage}" : absorbed > 0 ? $"护壳 −{absorbed}" : "0";
             return new BattleBeat(source, target, BattleEffect.Attack, mark);
         }
 
