@@ -1,53 +1,57 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
   <ui:VisualElement name="screen" class="screen">
     <ui:VisualElement name="background" class="background" picking-mode="Ignore" />
-    <ui:VisualElement class="top">
-      <ui:VisualElement>
-        <ui:Label text="风蚀雪谷" class="title" />
-        <ui:Label name="objective" class="objective" />
-      </ui:VisualElement>
-      <ui:VisualElement class="encounter">
-        <ui:Label name="turn" class="turn" />
+    <ui:VisualElement name="battle-hud" class="battle-hud">
+      <ui:VisualElement class="top">
         <ui:VisualElement>
-          <ui:Label name="wave" class="wave" />
-          <ui:Label name="wave-units" class="wave-units" />
+          <ui:Label name="location-title" class="title" />
+          <ui:Label name="objective" class="objective" />
+        </ui:VisualElement>
+        <ui:VisualElement class="encounter">
+          <ui:Label name="turn" class="turn" />
+          <ui:VisualElement>
+            <ui:Label name="wave" class="wave" />
+            <ui:Label name="wave-units" class="wave-units" />
+          </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement class="top-actions">
+          <ui:Button name="action-order" text="行动顺序 [Tab]" class="button top-button" />
+          <ui:Button name="restart" text="重开本战" class="button top-button" />
         </ui:VisualElement>
       </ui:VisualElement>
-      <ui:VisualElement class="top-actions">
-        <ui:Button name="action-order" text="行动顺序 [Tab]" class="button top-button" />
-        <ui:Button name="restart" text="重开战斗" class="button top-button" />
+      <ui:VisualElement class="arena">
+        <ui:VisualElement class="side-labels">
+          <ui:Label text="探险队" class="side-label crew-label" />
+          <ui:Label text="拦路者" class="side-label enemy-label" />
+        </ui:VisualElement>
+        <ui:Label name="order-note" class="order-note" />
+        <ui:VisualElement name="formations" class="formations" />
+        <ui:VisualElement class="notice-bar">
+          <ui:Label name="notice" class="notice" />
+          <ui:Label name="hint" class="hint" />
+        </ui:VisualElement>
       </ui:VisualElement>
-    </ui:VisualElement>
-    <ui:VisualElement class="arena">
-      <ui:VisualElement class="side-labels">
-        <ui:Label text="探险队" class="side-label crew-label" />
-        <ui:Label text="拦路者" class="side-label enemy-label" />
-      </ui:VisualElement>
-      <ui:Label name="order-note" class="order-note" />
-      <ui:VisualElement name="formations" class="formations" />
-      <ui:VisualElement class="notice-bar">
-        <ui:Label name="notice" class="notice" />
-        <ui:Label name="hint" class="hint" />
-      </ui:VisualElement>
-    </ui:VisualElement>
-    <ui:VisualElement class="tray">
-      <ui:VisualElement class="piles">
-        <ui:Label name="draw-count" class="pile" />
-        <ui:Label name="discard-count" class="pile" />
-        <ui:Button name="recall" text="收回队员" class="button deck-button" />
-      </ui:VisualElement>
-      <ui:VisualElement name="hand" class="hand" />
-      <ui:VisualElement class="actions">
-        <ui:Button name="redraw" class="button primary redraw" />
-        <ui:Label name="redraw-note" class="redraw-note" />
+      <ui:VisualElement class="tray">
+        <ui:VisualElement class="piles">
+          <ui:Label name="draw-count" class="pile" />
+          <ui:Label name="discard-count" class="pile" />
+          <ui:Button name="recall" text="收回队员" class="button deck-button" />
+        </ui:VisualElement>
+        <ui:VisualElement name="hand" class="hand" />
+        <ui:VisualElement class="actions">
+          <ui:Button name="redraw" class="button primary redraw" />
+          <ui:Label name="redraw-note" class="redraw-note" />
 
+        </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="overlay" class="overlay">
-      <ui:VisualElement class="dialog">
+      <ui:VisualElement name="dialog" class="dialog">
+        <ui:Label name="result-eyebrow" class="result-eyebrow" />
         <ui:Label name="result-title" class="result-title" />
         <ui:Label name="result-detail" class="result-detail" />
         <ui:VisualElement name="choices" class="choices" />
+        <ui:Button name="change-loadout" text="返回主角选择" class="button change-loadout" focusable="false" />
       </ui:VisualElement>
     </ui:VisualElement>
   </ui:VisualElement>

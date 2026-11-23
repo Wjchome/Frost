@@ -1,6 +1,7 @@
 """把工程已有插画合成在可重复生成的局内牌面上。"""
 from pathlib import Path
 from random import Random
+import sys
 
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -112,6 +113,37 @@ def icons():
         image.save(output / f"icon_{name}.png")
 
 
-for key, colors in palettes.items():
-    face(key, colors)
-icons()
+def status_icons():
+    for name in ("spice", "overload", "ink", "weakness", "block", "bonus", "pendant"):
+        image = Image.new("RGBA", (64, 64))
+        d = ImageDraw.Draw(image)
+        if name == "spice":
+            d.polygon([(9,48),(22,46),(31,38),(34,22),(41,15),(52,18),(56,28),(49,42),(37,52),(22,55)], fill="#ffad78")
+            d.line([(48,19),(52,9),(59,8)], fill="#b6efad", width=6)
+        elif name == "overload":
+            d.polygon([(33,4),(12,35),(29,35),(22,61),(53,25),(35,25),(43,4)], fill="#ffe386")
+        elif name == "ink":
+            d.polygon([(32,3),(14,28),(11,39),(17,54),(32,60),(47,54),(53,39),(50,28)], fill="#ddacff")
+            d.line([(21,36),(20,43),(25,48)], fill="#faf0ff", width=5)
+        elif name == "weakness":
+            for top in (10, 29):
+                d.line([(10,top),(32,top+17),(54,top)], fill="#c2d3ff", width=8, joint="curve")
+        elif name == "block":
+            d.polygon([(32,6),(55,15),(51,40),(41,52),(32,58),(23,52),(13,40),(9,15)], fill="#c3f5ed")
+            d.line([(20,31),(29,40),(45,22)], fill="#2a6069", width=6, joint="curve")
+        elif name == "bonus":
+            d.polygon([(32,4),(59,32),(32,60),(5,32)], fill="#b9f4c8")
+            d.line((20,32,44,32), fill="#2f644c", width=6)
+            d.line((32,20,32,44), fill="#2f644c", width=6)
+        elif name == "pendant":
+            d.arc((17,2,47,27), 0, 360, fill="#ffe3a1", width=6)
+            d.polygon([(32,22),(51,38),(32,60),(13,38)], fill="#ffe3a1")
+            d.polygon([(32,32),(40,39),(32,49),(24,39)], fill="#a36537")
+        image.save(output / f"icon_{name}.png")
+
+
+if "--status-icons" not in sys.argv:
+    for key, colors in palettes.items():
+        face(key, colors)
+    icons()
+status_icons()
