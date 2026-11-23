@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df6257a678b45c1da73bd2763461c436, type: 3}
+  m_Name: DraftSpin
+  m_EditorClassIdentifier:
+  displayName: "旋转巴掌"
+  catalogGroup: "通用"
+  portrait: {fileID: 2800000, guid: b402e03af17950eaa14110b11a92508a, type: 3}
+  action: 7
+  effect: 0
+  amount: 0
+  damage: 1
+  technique:
+    Target: 0
+    Hits: 4
+    RandomTarget: 1

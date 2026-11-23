@@ -27,25 +27,71 @@ namespace Frostline
     {
         public readonly string Title;
         public readonly IReadOnlyList<Encounter> Encounters;
+        public readonly bool RecruitCompanions;
 
-        public RouteStage(string title, Encounter[] encounters)
+        public RouteStage(string title, Encounter[] encounters, bool recruitCompanions = false)
         {
             Title = title;
             Encounters = Array.AsReadOnly(encounters);
+            RecruitCompanions = recruitCompanions;
         }
+    }
+
+    public sealed class ExpeditionFaction
+    {
+        public readonly string Name, Strategy;
+        public readonly IReadOnlyList<UnitType> Leaders;
+        public readonly IReadOnlyList<Card> StartingDeck, ExclusiveRecruits;
+        public readonly IReadOnlyList<UnitType> OpeningCompanions;
+        public readonly IReadOnlyList<Card> Items;
+        private readonly Card[] deck, supplies;
+        private readonly Card reward;
+
+        public ExpeditionFaction(string name, string strategy, UnitType[] leaders, Card[] deck,
+            Card[] supplies, Card[] exclusiveRecruits, Card reward, UnitType[] openingCompanions = null, Card[] items = null)
+        {
+            Name = name;
+            Strategy = strategy;
+            Leaders = Array.AsReadOnly(leaders);
+            StartingDeck = Array.AsReadOnly(deck);
+            ExclusiveRecruits = Array.AsReadOnly(exclusiveRecruits);
+            OpeningCompanions = Array.AsReadOnly(openingCompanions ?? Array.Empty<UnitType>());
+            Items = Array.AsReadOnly(items ?? Array.Empty<Card>());
+            this.deck = deck;
+            this.supplies = supplies;
+            this.reward = reward;
+        }
+
+        public StartingLoadout CreateLoadout(UnitType leader) =>
+            new(leader, Name, Strategy, reward, supplies, deck);
     }
 
     public sealed class DispatchRoute
     {
         private readonly IReadOnlyList<RouteStage> stages;
-        public IReadOnlyList<StartingLoadout> Loadouts { get; }
+        public IReadOnlyList<StartingLoadout> Loadouts { get; private set; }
+        public IReadOnlyList<ExpeditionFaction> Factions { get; }
         public IReadOnlyList<UnitType> Companions { get; }
+        private readonly IReadOnlyList<Card> sharedRecruits;
+        private readonly IReadOnlyList<Card> sharedItems;
+        private readonly Card junk;
+        public IReadOnlyList<(string Group, Card Card)> Catalog { get; }
+        public IReadOnlyList<UnitType> OpeningCompanions => Faction?.OpeningCompanions.Count > 0 ? Faction.OpeningCompanions : Companions;
+        private readonly Random draftRandom;
 
-        public DispatchRoute(StartingLoadout[] loadouts, UnitType[] companions, RouteStage[] stages)
+        public DispatchRoute(StartingLoadout[] loadouts, UnitType[] companions, RouteStage[] stages,
+            ExpeditionFaction[] factions = null, Card[] sharedRecruits = null, int? draftSeed = null,
+            (string Group, Card Card)[] catalog = null, Card[] sharedItems = null, Card junk = null)
         {
             Loadouts = Array.AsReadOnly(loadouts);
             Companions = Array.AsReadOnly(companions);
             this.stages = Array.AsReadOnly(stages);
+            Factions = Array.AsReadOnly(factions ?? Array.Empty<ExpeditionFaction>());
+            this.sharedRecruits = Array.AsReadOnly(sharedRecruits ?? Array.Empty<Card>());
+            this.sharedItems = Array.AsReadOnly(sharedItems ?? Array.Empty<Card>());
+            this.junk = junk;
+            Catalog = Array.AsReadOnly(catalog ?? Array.Empty<(string, Card)>());
+            draftRandom = draftSeed.HasValue ? new Random(draftSeed.Value) : new Random();
         }
 
         private readonly List<Card> deck = new();
@@ -55,17 +101,29 @@ namespace Frostline
         public IReadOnlyList<Card> Deck => deck.AsReadOnly();
         public string StageTitle => stages[Stage - 1].Title;
         public IReadOnlyList<Encounter> EncounterChoices => stages[Stage - 1].Encounters;
+        public ExpeditionFaction Faction { get; private set; }
+        public bool RecruitCompanions => Faction != null && stages[Stage - 1].RecruitCompanions && Stage < StageCount;
         public StartingLoadout Loadout { get; private set; }
         public Card CaptainCard { get; private set; }
         public Card CompanionCard { get; private set; }
         public UnitType Companion => CompanionCard?.Unit;
         public Card Supply { get; private set; }
+        public bool NeedsSupply => Loadout != null && Loadout.Supplies.Count != 0 && Supply == null;
         public IReadOnlyList<Card> Rewards { get; private set; } = Array.Empty<Card>();
         public Expedition Battle { get; private set; }
         public Pendant PendingPendant { get; private set; }
         public int PendantTargetCount => deck.Count + 2;
         private bool rewardClaimed;
         public bool CanClaimReward => Battle?.Phase == BattlePhase.Won && Stage < StageCount && !rewardClaimed;
+
+        public bool ChooseFaction(int index)
+        {
+            if (Faction != null || Loadout != null || index < 0 || index >= Factions.Count)
+                return false;
+            Faction = Factions[index];
+            Loadouts = Array.AsReadOnly(DrawChoices(Faction.Leaders, 3).Select(Faction.CreateLoadout).ToArray());
+            return true;
+        }
 
         public bool ChooseLoadout(int index)
         {
@@ -80,20 +138,19 @@ namespace Frostline
 
         public bool ChooseCompanion(int index)
         {
-            if (Loadout == null || Companion != null || index < 0 || index >= Companions.Count)
+            if (Loadout == null || Companion != null || index < 0 || index >= OpeningCompanions.Count)
                 return false;
-            CompanionCard = new Card(Companions[index]).Recruit();
+            CompanionCard = new Card(OpeningCompanions[index]).Recruit();
             return true;
         }
 
         public bool ChooseEncounter(int index)
         {
-            if (Supply == null || Battle != null || index < 0 || index >= EncounterChoices.Count)
+            if (CompanionCard == null || NeedsSupply || Battle != null || index < 0 || index >= EncounterChoices.Count)
                 return false;
             Encounter site = EncounterChoices[index];
-            Rewards = Stage < StageCount ? Array.AsReadOnly(new[] { Loadout.Reward }.Concat(site.RewardCards).ToArray())
-                : Array.Empty<Card>();
-            Battle = new Expedition(site, deck, CaptainCard, CompanionCard);
+            Rewards = BuildRewards(site);
+            Battle = new Expedition(site, deck, CaptainCard, CompanionCard, junk);
             return true;
         }
 
@@ -110,7 +167,7 @@ namespace Frostline
         {
             if (Battle == null || Battle.Phase is BattlePhase.Won or BattlePhase.Resolving)
                 return false;
-            Battle = new Expedition(Battle.Location, deck, CaptainCard, CompanionCard);
+            Battle = new Expedition(Battle.Location, deck, CaptainCard, CompanionCard, junk);
             return true;
         }
 
@@ -124,6 +181,32 @@ namespace Frostline
             if (!deck.Any(CanWearPendant) && !CanWearPendant(CaptainCard) && !CanWearPendant(CompanionCard))
                 AdvanceStage();
             return true;
+        }
+
+        private IReadOnlyList<Card> BuildRewards(Encounter site)
+        {
+            if (Stage == StageCount)
+                return Array.Empty<Card>();
+            if (!RecruitCompanions)
+            {
+                if (Faction?.Items.Count > 0)
+                    return Array.AsReadOnly(DrawChoices(Faction.Items, 2).Concat(DrawChoices(sharedItems, 1)).ToArray());
+                return Array.AsReadOnly(new[] { Loadout.Reward }.Concat(site.RewardCards).ToArray());
+            }
+
+            var candidates = DrawChoices(Faction.ExclusiveRecruits, 2).Concat(DrawChoices(sharedRecruits, 1));
+            return Array.AsReadOnly(candidates.ToArray());
+        }
+
+        private IEnumerable<T> DrawChoices<T>(IReadOnlyList<T> pool, int count)
+        {
+            var remaining = pool.Distinct().ToList();
+            while (count-- > 0 && remaining.Count != 0)
+            {
+                int index = draftRandom.Next(remaining.Count);
+                yield return remaining[index];
+                remaining.RemoveAt(index);
+            }
         }
 
         private bool CanWearPendant(Card card) =>

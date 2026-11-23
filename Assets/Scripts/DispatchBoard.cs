@@ -10,7 +10,7 @@ namespace Frostline
     [RequireComponent(typeof(UIDocument), typeof(AudioSource))]
     public sealed class DispatchBoard : MonoBehaviour
     {
-        private enum DeckPage { Roster, Draw, Discard }
+        private enum DeckPage { Roster, Draw, Discard, Codex }
 
         private readonly Dictionary<string, Texture2D> textures = new();
         private readonly Dictionary<Position, Button> slots = new();
@@ -24,7 +24,7 @@ namespace Frostline
         private AudioSource audioSource;
         private bool showingTitle, showingGuide, soundEnabled;
         private Label locationTitle, turn, wave, waveUnits, objective, notice, hint, drawCount, discardCount;
-        private Label resultEyebrow, resultTitle, resultDetail, redrawNote;
+        private Label resultEyebrow, resultTitle, resultDetail, redrawNote, junkPerTurnNote;
         private Button redraw, recall, restart, orderButton, changeLoadout;
         private Button inspectDeck, inspectDraw, inspectDiscard, routeDeck, rosterTab, drawTab, discardTab;
         private VisualElement deckOverlay, deckGrid, deckDetail;
@@ -34,6 +34,7 @@ namespace Frostline
         private Button selectedDeckTile;
         private Label orderNote;
         private bool showOrder;
+        private readonly List<VisualElement> forecastMarks = new();
         private int hoveredCard = -1;
         private Position? hoveredSlot;
         private DispatchRoute route;
@@ -46,7 +47,9 @@ namespace Frostline
         private bool confirmRestart;
         private Action beginDrag, clickDrag;
         private int dragPointer = -1;
-        private Vector2 dragOrigin;
+        private const float DragThreshold = 5f;
+        private const float DropTolerance = 12f;
+        private Vector2 dragOrigin, dragOffset;
         private VisualElement ghost, dragSource;
         private Vector2 ghostPosition, ghostDestination;
         private float ghostTilt;
@@ -93,6 +96,7 @@ namespace Frostline
             redraw = screen.Q<Button>("redraw");
 
             redrawNote = screen.Q<Label>("redraw-note");
+            junkPerTurnNote = screen.Q<Label>("junk-per-turn-note");
             recall = screen.Q<Button>("recall");
             restart = screen.Q<Button>("restart");
             orderButton = screen.Q<Button>("action-order");
@@ -204,6 +208,17 @@ namespace Frostline
 
         private void Update()
         {
+            if (deckPage == DeckPage.Codex)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.C))
+                    CloseDeck();
+                return;
+            }
+            if (Input.GetKeyDown(KeyCode.C) && CanOpenCodex)
+            {
+                ShowDeck(DeckPage.Codex);
+                return;
+            }
             if (showingTitle)
             {
                 if (Input.GetKeyDown(KeyCode.Return))
@@ -212,9 +227,9 @@ namespace Frostline
             }
             if (ghost != null)
             {
-                float blend = 1f - Mathf.Exp(-24f * Time.unscaledDeltaTime);
+                float blend = 1f - Mathf.Exp(-46f * Time.unscaledDeltaTime);
                 ghostPosition = Vector2.Lerp(ghostPosition, ghostDestination, blend);
-                float desiredTilt = Mathf.Clamp((ghostDestination.x - ghostPosition.x) * 0.13f, -12f, 12f);
+                float desiredTilt = Mathf.Clamp((ghostDestination.x - ghostPosition.x) * 0.09f, -7f, 7f);
                 ghostTilt = Mathf.Lerp(ghostTilt, desiredTilt, blend);
                 Place(ghost, ghostPosition);
                 ghost.style.rotate = new Rotate(Angle.Degrees(ghostTilt));
@@ -243,7 +258,7 @@ namespace Frostline
                 ClearSelection();
                 RenderOverlay();
             }
-            if (Input.GetKeyDown(KeyCode.Space) && !confirmRestart)
+            if (Input.GetKeyDown(KeyCode.Space) && !confirmRestart && beginDrag == null)
                 Redraw();
         }
 
@@ -349,7 +364,7 @@ namespace Frostline
                 flare.style.height = 65;
                 screen.Add(flare);
                 Vector2 finish = screen.WorldToLocal(targetRect.center) - new Vector2(6, 33);
-                yield return Tween(0.16f, t =>
+                yield return Tween(0.10f, t =>
                 {
                     Place(flare, finish + new Vector2(-95 * (1f - t), 100 * (1f - t)));
                     flare.style.opacity = t;
@@ -363,7 +378,7 @@ namespace Frostline
                 yield break;
             if (actor.Type.Pattern == AttackPattern.Support)
             {
-                yield return new WaitForSecondsRealtime(0.16f);
+                yield return new WaitForSecondsRealtime(0.09f);
                 yield break;
             }
 
@@ -371,15 +386,15 @@ namespace Frostline
             DrawUnitFace(motion, actor);
             source.AddToClassList("motion-source");
             Vector2 direction = (destination - start).normalized;
-            Vector2 recoil = start - direction * 22f;
+            Vector2 recoil = start - direction * 13f;
             Vector2 end = Vector2.Lerp(start, destination, 0.72f);
             float tilt = direction.x * 12f;
-            yield return Tween(0.12f, t =>
+            yield return Tween(0.065f, t =>
             {
                 Place(motion, Vector2.Lerp(start, recoil, t));
                 motion.style.rotate = new Rotate(Angle.Degrees(-tilt * t));
             });
-            yield return Tween(0.18f, t =>
+            yield return Tween(0.11f, t =>
             {
                 Place(motion, Vector2.Lerp(recoil, end, t * t));
                 motion.style.rotate = new Rotate(Angle.Degrees(Mathf.Lerp(-tilt, tilt, t)));
@@ -400,7 +415,7 @@ namespace Frostline
             });
             if (action.Effect != BattleEffect.Attack)
             {
-                yield return new WaitForSecondsRealtime(action.Effect == BattleEffect.Arrival ? 0.25f : 0.32f);
+                yield return new WaitForSecondsRealtime(action.Effect == BattleEffect.Arrival ? 0.18f : 0.17f);
                 yield break;
             }
 
@@ -412,7 +427,7 @@ namespace Frostline
             foreach (Position pos in action.Targets)
                 targetViews.Add(slots[pos]);
 
-            yield return Tween(0.29f, t =>
+            yield return Tween(0.21f, t =>
             {
                 if (attackView != null)
                 {
@@ -421,7 +436,7 @@ namespace Frostline
                     attackView.style.rotate = new Rotate(Angle.Degrees(attackTilt * (1f - returnProgress)));
                 }
 
-                float kick = Mathf.Sin(t * Mathf.PI * 6f) * (1f - t) * 12f;
+                float kick = Mathf.Sin(t * Mathf.PI * 5f) * (1f - t) * 10f;
                 foreach (Button target in targetViews)
                 {
                     target.style.translate = new Translate(kick, 0);
@@ -540,6 +555,8 @@ namespace Frostline
             redraw.text = game.Refresh == 0 ? "免费换牌" : $"换牌  {game.Refresh}";
             redraw.SetEnabled(game.CanRedraw);
             redrawNote.text = game.Opening ? "开局部署后开启" : game.Refresh == 0 ? "空格敲铃" : "提前敲铃消耗一回合";
+            junkPerTurnNote.style.display = game.JunkPerTurn > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            junkPerTurnNote.text = $"每回合垃圾 +{game.JunkPerTurn}";
             redraw.EnableInClassList("redraw-ready", !game.Opening && game.Refresh == 0);
             restart.SetEnabled(planning);
             hoveredCard = -1;
@@ -562,29 +579,68 @@ namespace Frostline
 
         private void ApplyOrder()
         {
-            bool visible = showOrder && game.Phase == BattlePhase.Planning && !game.Opening;
-            orderButton.SetEnabled(game.Phase == BattlePhase.Planning && !game.Opening);
-            orderButton.EnableInClassList("order-active", visible);
-            orderButton.text = visible ? "隐藏顺序 [Tab]" : "行动顺序 [Tab]";
-            orderNote.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
-            foreach (var slot in slots)
-            {
-                slot.Value.Q<Label>(className: "order-badge")?.RemoveFromHierarchy();
-                slot.Value.Q<Label>(className: "arrival-badge")?.RemoveFromHierarchy();
-            }
+            bool canPreview = game.Phase == BattlePhase.Planning && !game.Opening && !deckPage.HasValue;
+            bool previewCard = canPreview && hoveredSlot.HasValue && game.CanPlay(selectedCard, hoveredSlot.Value);
+            bool visible = canPreview && (showOrder || previewCard);
+            orderButton.SetEnabled(canPreview);
+            orderButton.EnableInClassList("order-active", showOrder && canPreview);
+            orderButton.text = showOrder && canPreview ? "隐藏预览 [Tab]" : "行动预览 [Tab]";
+            orderNote.style.visibility = visible ? Visibility.Visible : Visibility.Hidden;
+            foreach (VisualElement mark in forecastMarks)
+                mark.RemoveFromHierarchy();
+            forecastMarks.Clear();
 
             if (!visible)
                 return;
 
-            bool previewCard = hoveredSlot.HasValue && game.CanPlay(selectedCard, hoveredSlot.Value);
-            var (actions, arrivals) = game.ForecastTurn(selectedCard, hoveredSlot);
-            orderNote.text = (previewCard ? "出牌后预览" : "下一拍预览") +
-                (actions.Count == 0 ? " · 无单位行动" : "") +
-                (arrivals.Count > 0 ? " · 本回合增援" : "");
-            for (int i = 0; i < actions.Count; i++)
-                slots[actions[i]].Add(Text((i + 1).ToString(), "order-badge"));
-            foreach (var arrival in arrivals)
-                slots[arrival.Position].Add(Text($"增援 · {arrival.Unit.Name}", "arrival-badge"));
+            var preview = game.PreviewTurn(selectedCard, previewCard ? hoveredSlot : null);
+            orderNote.text = (previewCard ? $"{game.Hand[selectedCard].Name} · 出牌后预览" : "下一拍预览") +
+                (preview.Phase == BattlePhase.Lost ? " · 队长将倒下" :
+                    preview.Phase == BattlePhase.Won ? " · 预计获胜" :
+                    preview.Arrivals.Count > 0 ? " · 本回合增援" : "");
+            orderNote.EnableInClassList("danger", preview.Phase == BattlePhase.Lost);
+            for (int i = 0; i < preview.Actions.Count; i++)
+                AddForecastMark(slots[preview.Actions[i]], Text((i + 1).ToString(), "order-badge"));
+            foreach (var arrival in preview.Arrivals)
+                AddForecastMark(slots[arrival.Position], Text($"增援 · {arrival.Unit.Name}", "arrival-badge"));
+            foreach (UnitForecast result in preview.Units)
+                ShowUnitForecast(result);
+        }
+
+        private void ShowUnitForecast(UnitForecast result)
+        {
+            Unit unit = game.At(result.Origin);
+            if (unit == null)
+                return;
+
+            string label;
+            string style;
+            if (result.Defeated)
+                (label, style) = (unit.Leader ? "队长将倒下" : "预计击倒", "forecast-danger");
+            else if (result.Health != unit.Health)
+                (label, style) = ($"生命 {unit.Health} → {result.Health}", result.Health < unit.Health ? "forecast-danger" : "forecast-gain");
+            else if (result.Block != unit.Block)
+                (label, style) = ($"格挡 {unit.Block} → {result.Block}", "forecast-effect");
+            else if (result.Shell != unit.Shell)
+                (label, style) = ($"护壳 {unit.Shell} → {result.Shell}", "forecast-effect");
+            else if (result.Snow != unit.Frozen)
+                (label, style) = ($"雪球 {unit.Frozen} → {result.Snow}", "forecast-effect");
+            else if (result.Attack != unit.Attack)
+                (label, style) = ($"攻击 {unit.Attack} → {result.Attack}", "forecast-effect");
+            else if (!result.Origin.Equals(result.Destination.Value))
+                (label, style) = ("预计换排", "forecast-effect");
+            else
+                return;
+
+            var slot = slots[result.Origin];
+            var surface = slot.Q(className: "face-art") ?? slot;
+            AddForecastMark(surface, Text(label, "forecast-chip", style));
+        }
+
+        private void AddForecastMark(VisualElement parent, VisualElement mark)
+        {
+            parent.Add(mark);
+            forecastMarks.Add(mark);
         }
 
         private void RenderFormation(bool planning)
@@ -678,16 +734,17 @@ namespace Frostline
         {
             cards.Clear();
             hand.Clear();
+            hand.EnableInClassList("many-cards", game.Hand.Count > Expedition.HandSize);
             for (int i = 0; i < game.Hand.Count; i++)
             {
                 int index = i;
                 Card card = game.Hand[i];
-                Button view = ButtonWith(null, () => SelectCard(index, toggle: true), "card");
+                Button view = ButtonWith(null, () => UseHandCard(index), "card");
                 DrawHandFace(view, card);
                 view.SetEnabled(planning);
                 if (planning)
                 {
-                    draggable.Add(view, (() => SelectCard(index, toggle: true), () => SelectCard(index, toggle: false)));
+                    draggable.Add(view, (() => UseHandCard(index), () => SelectCard(index, toggle: false)));
                     view.RegisterCallback<PointerEnterEvent>(_ => HoverCard(index));
                     view.RegisterCallback<PointerLeaveEvent>(_ =>
                     {
@@ -709,6 +766,14 @@ namespace Frostline
             if (index >= 0)
                 hoveredSlot = null;
             ApplyTargets();
+        }
+
+        private void UseHandCard(int index)
+        {
+            if (game.CanPlayOnHand(selectedCard, index))
+                BeginSequence(game.PlayOnHand(selectedCard, index));
+            else
+                SelectCard(index, toggle: true);
         }
 
         private void HoverSlot(Position? pos)
@@ -746,7 +811,7 @@ namespace Frostline
             {
                 foreach (Position pos in game.AttackTargets(hoveredSlot.Value, current.Type))
                     affected.Add(pos);
-                randomTarget = current.Type.Pattern == AttackPattern.Aimless;
+                randomTarget = current.Pattern == AttackPattern.Aimless;
             }
 
             bool any = false;
@@ -761,14 +826,26 @@ namespace Frostline
                 entry.Value.EnableInClassList("possible", randomTarget && affected.Contains(pos));
                 entry.Value.EnableInClassList("picked", selectedUnit.HasValue && selectedUnit.Value.Equals(pos));
                 entry.Value.EnableInClassList("inspect", hoveredSlot.HasValue && hoveredSlot.Value.Equals(pos));
+                bool focused = hoveredSlot.HasValue && hoveredSlot.Value.Equals(pos) &&
+                    (selectedCard >= 0 || selectedUnit.HasValue);
+                entry.Value.EnableInClassList("drop-valid", focused && valid);
+                entry.Value.EnableInClassList("drop-invalid", focused && !valid);
             }
 
             for (int i = 0; i < cards.Count; i++)
+            {
                 cards[i].EnableInClassList("selected", i == selectedCard);
+                cards[i].EnableInClassList("hand-target", game.CanPlayOnHand(selectedCard, i));
+            }
 
             bool canRecall = selectedUnit.HasValue && game.CanRecall(selectedUnit.Value);
             recall.SetEnabled(canRecall);
             recall.EnableInClassList("target", canRecall);
+            bool handTarget = selectedCard >= 0 && game.CanPlayOnHand(selectedCard, hoveredCard);
+            if (selectedCard >= 0 && Enumerable.Range(0, cards.Count).Any(i => game.CanPlayOnHand(selectedCard, i)))
+                any = true;
+            if (handTarget)
+                cardIndex = selectedCard;
             hint.text = game.Phase == BattlePhase.Resolving ? "结算中…" :
                 cardIndex >= 0 ? any ? CardDetails(game.Hand[cardIndex],
                     hoveredSlot.HasValue && game.CanPlay(cardIndex, hoveredSlot.Value) ? current : null) : "当前没有合法目标。" :
@@ -794,12 +871,12 @@ namespace Frostline
         private static string UnitDetails(Unit unit)
         {
             UnitType type = unit.Type;
-            string pattern = Expedition.PatternName(type.Pattern);
-            if (type.Pattern == AttackPattern.Aimless)
+            string pattern = Expedition.PatternName(unit.Pattern);
+            if (unit.Pattern == AttackPattern.Aimless)
                 pattern += "（从高亮目标随机选一名）";
             if (type.Pattern == AttackPattern.Support)
                 pattern += "（倒计时归零，给予同排最前方的其他友军）";
-            string frenzy = type.Frenzy > 1 ? $" · 狂热 ×{type.Frenzy}" : "";
+            string frenzy = unit.Frenzy > 1 ? $" · 狂热 ×{unit.Frenzy}" : "";
             string ability = type.Ability.Effect == EffectKind.None ? "" : " · " + type.Ability.Describe(unit.AbilityBonus);
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
             string ink = unit.Ink > 0 ? $" · 墨水 {unit.Ink}（触发能力停用）" : "";
@@ -822,26 +899,48 @@ namespace Frostline
         private void RenderOverlay()
         {
             bool selecting = game == null;
+            bool selectingFaction = selecting && route.Factions.Count > 0 && route.Faction == null;
             bool selectingLoadout = selecting && route.Loadout == null;
             bool selectingCompanion = selecting && route.Loadout != null && route.Companion == null;
-            bool selectingSupply = selecting && route.Companion != null && route.Supply == null;
+            bool selectingSupply = selecting && route.Companion != null && route.NeedsSupply;
             bool finished = game?.Phase is BattlePhase.Won or BattlePhase.Lost;
             bool reward = route.CanClaimReward && !confirmRestart;
             bool equipping = route.PendingPendant != Pendant.None;
             bool shopping = selecting || reward || equipping;
             overlay.style.display = selecting || finished || confirmRestart ? DisplayStyle.Flex : DisplayStyle.None;
             dialog.EnableInClassList("wide", shopping);
-            changeLoadout.style.display = selecting && route.Stage == 1 && !selectingLoadout ? DisplayStyle.Flex : DisplayStyle.None;
+            changeLoadout.text = route.Factions.Count > 0 ? "返回部族选择" : "返回主角选择";
+            changeLoadout.style.display = selecting && route.Stage == 1 && (!selectingLoadout || route.Faction != null)
+                ? DisplayStyle.Flex : DisplayStyle.None;
             routeDeck.style.display = (selecting || finished) && route.Companion != null && !confirmRestart
                 ? DisplayStyle.Flex : DisplayStyle.None;
             choices.Clear();
             choices.EnableInClassList("choice-grid", shopping);
             resultEyebrow.text = selectingLoadout || selectingCompanion || selectingSupply ? "霜线信使"
                 : shopping ? $"霜线信使   /   第 {route.Stage} 段" : game.Location.Name;
-            if (selectingLoadout)
+            if (selectingFaction)
             {
-                resultTitle.text = "选择主角和牌组";
-                resultDetail.text = "主角倒下时，战斗结束。";
+                resultTitle.text = "选择部族";
+                resultDetail.text = "部族决定起始牌组和途中可以招募的随从。";
+                for (int i = 0; i < route.Factions.Count; i++)
+                {
+                    int index = i;
+                    ExpeditionFaction faction = route.Factions[i];
+                    var option = AddChoice(faction.Name, $"起始牌 {faction.StartingDeck.Count} 张", faction.Strategy, () =>
+                    {
+                        if (route.ChooseFaction(index))
+                            RenderOverlay();
+                    });
+                    option.AddToClassList("loadout-choice");
+                    AddPortrait(option, faction.Leaders[0].Art).SendToBack();
+                    option.Add(Text(DeckList(faction.StartingDeck), "deck-preview"));
+                }
+            }
+            else if (selectingLoadout)
+            {
+                resultTitle.text = route.Faction == null ? "选择主角和牌组" : "选择领袖";
+                resultDetail.text = route.Faction == null ? "主角倒下时，战斗结束。"
+                    : $"从三名候选中选择一名来带领{route.Faction.Name}。";
                 for (int i = 0; i < route.Loadouts.Count; i++)
                 {
                     int index = i;
@@ -852,20 +951,21 @@ namespace Frostline
                             RenderOverlay();
                     });
                     option.AddToClassList("loadout-choice");
-                    option.Add(Text(loadout.Strategy, "loadout-strategy"));
-                    string contents = string.Join("、", loadout.Deck.GroupBy(card => card.Name)
-                        .Select(group => group.Count() == 1 ? group.Key : $"{group.Key} ×{group.Count()}"));
-                    option.Add(Text($"{loadout.Deck.Count} 张牌 · {contents}", "deck-preview"));
+                    if (route.Faction == null)
+                    {
+                        option.Add(Text(loadout.Strategy, "loadout-strategy"));
+                        option.Add(Text($"{loadout.Deck.Count} 张牌 · {DeckList(loadout.Deck)}", "deck-preview"));
+                    }
                 }
             }
             else if (selectingCompanion)
             {
-                resultTitle.text = "选择一名随从";
-                resultDetail.text = $"{route.Loadout.Captain.Name}会和所选随从一起随队出发，两者可在每战开局免费部署。";
-                for (int i = 0; i < route.Companions.Count; i++)
+                resultTitle.text = "选择开局伙伴";
+                resultDetail.text = $"开局伙伴与{route.Loadout.Captain.Name}同行，可在每战开局免费部署。";
+                for (int i = 0; i < route.OpeningCompanions.Count; i++)
                 {
                     int index = i;
-                    AddUnitChoice(route.Companions[i], null, () =>
+                    AddUnitChoice(route.OpeningCompanions[i], null, () =>
                     {
                         if (route.ChooseCompanion(index))
                             RenderOverlay();
@@ -891,7 +991,8 @@ namespace Frostline
             {
                 resultTitle.text = route.StageTitle;
                 string party = $"{route.Loadout.Captain.Name}与{route.Companion.Name}携带 {route.DeckCount} 张卡牌。";
-                resultDetail.text = route.Stage < route.StageCount ? party + "胜利后获得一张新牌和一枚挂坠。"
+                resultDetail.text = route.Stage < route.StageCount
+                    ? party + (route.RecruitCompanions ? "胜利后招募一名随从并获得挂坠。" : "胜利后获得一张新牌和一枚挂坠。")
                     : party + "选择最后一战。";
                 for (int i = 0; i < route.EncounterChoices.Count; i++)
                 {
@@ -923,12 +1024,18 @@ namespace Frostline
             }
             else if (reward)
             {
-                resultTitle.text = "选择一张新牌";
-                resultDetail.text = $"已攻克{game.Location.Name}。选中的牌会在下一战开局抽到。";
+                resultTitle.text = route.RecruitCompanions ? "招募随从" : "选择一张新牌";
+                resultDetail.text = route.RecruitCompanions
+                    ? $"已攻克{game.Location.Name}。选一名随从加入队伍，下一战开局抽到。"
+                    : $"已攻克{game.Location.Name}。选中的牌会在下一战开局抽到。";
                 for (int i = 0; i < route.Rewards.Count; i++)
                 {
                     int index = i;
-                    AddSupplyChoice(route.Rewards[i], () =>
+                    Card card = route.Rewards[i];
+                    string source = route.RecruitCompanions
+                        ? route.Faction.ExclusiveRecruits.Contains(card) ? route.Faction.Name : "通用随从"
+                        : null;
+                    AddSupplyChoice(card, () =>
                     {
                         if (!route.ClaimReward(index))
                             return;
@@ -936,7 +1043,7 @@ namespace Frostline
                             LoadBattle();
                         else
                             RenderOverlay();
-                    });
+                    }, source);
                 }
             }
             else if (equipping)
@@ -985,9 +1092,12 @@ namespace Frostline
             return option;
         }
 
-        private void AddSupplyChoice(Card card, Action choose)
+        private static string DeckList(IReadOnlyList<Card> deck) => string.Join("、", deck.GroupBy(card => card.Name)
+            .Select(group => group.Count() == 1 ? group.Key : $"{group.Key} ×{group.Count()}"));
+
+        private void AddSupplyChoice(Card card, Action choose, string source = null)
         {
-            var option = AddChoice(card.Name, card.Unit == null ? "道具" : "队员", CardDetails(card), choose);
+            var option = AddChoice(card.Name, source ?? (card.Unit == null ? "道具" : "队员"), CardDetails(card), choose);
             option.AddToClassList("supply-choice");
             AddCardArt(option, card).SendToBack();
         }
@@ -1031,12 +1141,14 @@ namespace Frostline
             rosterTab.clicked += () => ShowDeck(DeckPage.Roster);
             drawTab.clicked += () => ShowDeck(DeckPage.Draw);
             discardTab.clicked += () => ShowDeck(DeckPage.Discard);
+            foreach (string button in new[] { "title-codex", "battle-codex", "route-codex" })
+                screen.Q<Button>(button).clicked += () => ShowDeck(DeckPage.Codex);
             screen.Q<Button>("close-deck").clicked += CloseDeck;
         }
 
         private void ShowDeck(DeckPage page)
         {
-            if (!CanReviewDeck || (page != DeckPage.Roster && game == null))
+            if (page == DeckPage.Codex ? !CanOpenCodex : !CanReviewDeck || (page != DeckPage.Roster && game == null))
                 return;
 
             ClearDrag();
@@ -1047,6 +1159,16 @@ namespace Frostline
             deckDetail.Clear();
             selectedDeckTile = null;
             deckScroll.scrollOffset = Vector2.zero;
+
+            bool codex = page == DeckPage.Codex;
+            screen.Q<Label>("deck-title").text = codex ? "卡牌图鉴" : "牌组一览";
+            rosterTab.parent.style.display = codex ? DisplayStyle.None : DisplayStyle.Flex;
+            screen.Q("codex-tabs").style.display = codex ? DisplayStyle.Flex : DisplayStyle.None;
+            if (codex)
+            {
+                ShowCodexGroup(null);
+                return;
+            }
 
             bool roster = page == DeckPage.Roster;
             rosterTab.text = $"队伍与牌组  {route.DeckCount}";
@@ -1083,12 +1205,36 @@ namespace Frostline
             // Group only cards with identical combat values, including recalled units' health and pendants.
             var groups = source.GroupBy(card =>
                 (card.Name, card.Unit, card.Action, card.Amount, card.Damage, card.Effect, card.TargetsEnemy,
-                    card.DeploymentHealth, card.DeploymentAttack, card.DeploymentEffectBonus, card.Pendant, card.BonusAgainst, card.BonusDamage));
+                    card.DeploymentHealth, card.DeploymentAttack, card.DeploymentEffectBonus, card.Pendant, card.BonusAgainst, card.BonusDamage, card.Technique));
             foreach (var group in groups.OrderBy(group => group.Key.Name, StringComparer.Ordinal))
                 AddDeckTile(group.First(), group.Count(), null);
 
             if (selectedDeckTile == null)
                 deckDetail.Add(Text("这个牌堆是空的。", "deck-empty"));
+        }
+
+        private bool CanOpenCodex => route?.Catalog.Count > 0 && resolving == null && game?.Phase != BattlePhase.Resolving;
+
+        private void ShowCodexGroup(string group)
+        {
+            var tabs = screen.Q("codex-tabs");
+            tabs.Clear();
+            var groups = route.Catalog.Select(entry => entry.Group).Distinct().Prepend(null);
+            foreach (string option in groups)
+            {
+                var tab = ButtonWith(option ?? "全部", () => ShowCodexGroup(option), "button", "deck-tab");
+                tab.EnableInClassList("current", option == group);
+                tabs.Add(tab);
+            }
+
+            deckDetail.Clear();
+            deckGrid.Clear();
+            selectedDeckTile = null;
+            deckScroll.scrollOffset = Vector2.zero;
+            var entries = route.Catalog.Where(entry => group == null || entry.Group == group).ToArray();
+            deckSummary.text = $"共 {entries.Length} 张牌。选中卡牌查看数值和效果。";
+            foreach (var entry in entries)
+                AddDeckTile(entry.Card, 1, null);
         }
 
         private void CloseDeck()
@@ -1157,33 +1303,39 @@ namespace Frostline
 
             if (ghost == null)
             {
-                if (Vector2.Distance(dragOrigin, evt.position) < 8)
+                if (Vector2.Distance(dragOrigin, evt.position) < DragThreshold)
                     return;
-                hoveredCard = -1;
-                beginDrag();
-                StopReturn();
-                Rect original = dragSource.worldBound;
-                ghost = FloatingCard(original);
-                if (selectedCard >= 0)
-                    DrawHandFace(ghost, game.Hand[selectedCard]);
-                else if (selectedUnit.HasValue && game.At(selectedUnit.Value) is Unit unit)
-                    DrawUnitFace(ghost, unit);
-                dragSource.AddToClassList("motion-source");
-                ghostPosition = screen.WorldToLocal(original.position);
-                ghostTilt = 0f;
-                Place(ghost, ghostPosition);
+                BeginHeldDrag(evt.position);
             }
 
-            Vector2 local = screen.WorldToLocal(evt.position);
-            ghostDestination = local - new Vector2(dragSource.worldBound.width * 0.5f, 42f);
+            ghostDestination = screen.WorldToLocal(evt.position) - dragOffset;
             Position? previousSlot = hoveredSlot;
-            hoveredSlot = FindSlot(evt.position, out var pos) ? pos : null;
-            bool valid = hoveredSlot.HasValue && (selectedCard >= 0 ? game.CanPlay(selectedCard, hoveredSlot.Value) :
-                selectedUnit.HasValue && game.CanMove(selectedUnit.Value, hoveredSlot.Value));
+            hoveredSlot = FindDropSlot(evt.position, out var pos) ? pos : null;
+            bool valid = hoveredSlot.HasValue && CanDropOn(hoveredSlot.Value);
+            valid |= FindHandDrop(evt.position) >= 0;
             valid |= selectedUnit.HasValue && recall.worldBound.Contains(evt.position) && game.CanRecall(selectedUnit.Value);
             ghost.EnableInClassList("drop-ready", valid);
+            ghost.EnableInClassList("drop-blocked", hoveredSlot.HasValue && !valid);
             if (!Nullable.Equals(previousSlot, hoveredSlot))
                 ApplyTargets();
+        }
+
+        private void BeginHeldDrag(Vector2 pointer)
+        {
+            Rect original = dragSource.worldBound;
+            dragOffset = screen.WorldToLocal(dragOrigin) - screen.WorldToLocal(original.position);
+            hoveredCard = -1;
+            beginDrag();
+            StopReturn();
+            ghost = FloatingCard(original);
+            if (selectedCard >= 0)
+                DrawHandFace(ghost, game.Hand[selectedCard]);
+            else if (selectedUnit.HasValue && game.At(selectedUnit.Value) is Unit unit)
+                DrawUnitFace(ghost, unit);
+            dragSource.AddToClassList("motion-source");
+            ghostPosition = ghostDestination = screen.WorldToLocal(pointer) - dragOffset;
+            ghostTilt = 0f;
+            Place(ghost, ghostPosition);
         }
 
         private void OnPointerUp(PointerUpEvent evt)
@@ -1194,10 +1346,14 @@ namespace Frostline
             evt.StopImmediatePropagation();
             if (ghost == null)
             {
-                Action click = clickDrag;
-                ClearDrag();
-                click?.Invoke();
-                return;
+                if (Vector2.Distance(dragOrigin, evt.position) < DragThreshold)
+                {
+                    Action click = clickDrag;
+                    ClearDrag();
+                    click?.Invoke();
+                    return;
+                }
+                BeginHeldDrag(evt.position);
             }
 
             if (selectedUnit.HasValue && recall.worldBound.Contains(evt.position) && game.CanRecall(selectedUnit.Value))
@@ -1207,12 +1363,18 @@ namespace Frostline
                 return;
             }
 
-            if (FindSlot(evt.position, out var pos) &&
-                (selectedCard >= 0 ? game.CanPlay(selectedCard, pos)
-                    : selectedUnit.HasValue && game.CanMove(selectedUnit.Value, pos)))
+            if (FindDropSlot(evt.position, out var pos) && CanDropOn(pos))
             {
                 ClearDrag();
                 UseSlot(pos);
+                return;
+            }
+
+            int handTarget = FindHandDrop(evt.position);
+            if (handTarget >= 0)
+            {
+                ClearDrag();
+                UseHandCard(handTarget);
                 return;
             }
 
@@ -1226,7 +1388,18 @@ namespace Frostline
             returning = StartCoroutine(ReturnCard(card, source, start, tilt));
         }
 
-        private bool FindSlot(Vector2 panelPosition, out Position pos)
+        private bool CanDropOn(Position pos) => selectedCard >= 0 ? game.CanPlay(selectedCard, pos)
+            : selectedUnit.HasValue && game.CanMove(selectedUnit.Value, pos);
+
+        private int FindHandDrop(Vector2 pointer)
+        {
+            for (int i = 0; i < cards.Count; i++)
+                if (game.CanPlayOnHand(selectedCard, i) && cards[i].worldBound.Contains(pointer))
+                    return i;
+            return -1;
+        }
+
+        private bool FindDropSlot(Vector2 panelPosition, out Position pos)
         {
             foreach (var slot in slots)
             {
@@ -1237,8 +1410,26 @@ namespace Frostline
                 }
             }
 
+            bool found = false;
+            float bestDistance = DropTolerance * DropTolerance;
             pos = default;
-            return false;
+            foreach (var slot in slots)
+            {
+                if (!CanDropOn(slot.Key))
+                    continue;
+
+                Rect bounds = slot.Value.worldBound;
+                var edge = new Vector2(Mathf.Clamp(panelPosition.x, bounds.xMin, bounds.xMax),
+                    Mathf.Clamp(panelPosition.y, bounds.yMin, bounds.yMax));
+                float distance = (edge - panelPosition).sqrMagnitude;
+                if (distance > bestDistance)
+                    continue;
+
+                bestDistance = distance;
+                pos = slot.Key;
+                found = true;
+            }
+            return found;
         }
 
         private VisualElement returnView;
@@ -1248,7 +1439,7 @@ namespace Frostline
             returnView = card;
             Place(card, start);
             Vector2 end = screen.WorldToLocal(source.worldBound.position);
-            yield return Tween(0.20f, t =>
+            yield return Tween(0.16f, t =>
             {
                 float ease = 1f - Mathf.Pow(1f - t, 3f);
                 Place(card, Vector2.Lerp(start, end, ease));
@@ -1301,9 +1492,9 @@ namespace Frostline
         }
 
         private void DrawHandFace(VisualElement view, Card card) =>
-            DrawCardFace(view, card, game.IsCaptainCard(card), game.Opening);
+            DrawCardFace(view, card, game.IsCaptainCard(card), game.Opening, card.IsJunk ? game.JunkAttackBonus : 0);
 
-        private void DrawCardFace(VisualElement view, Card card, bool leader, bool crowned)
+        private void DrawCardFace(VisualElement view, Card card, bool leader, bool crowned, int extraAttack = 0)
         {
             if (card.Unit != null)
             {
@@ -1314,9 +1505,11 @@ namespace Frostline
             view.AddToClassList("item-card");
             AddCardArt(view, card);
             view.Add(Text(card.Name, "face-title"));
-            view.Add(Text(card.Description, "card-desc"));
-            if (card.Damage > 0)
-                AddStat(view, "attack", card.Damage.ToString(), "attack-corner");
+            var description = Text(card.Description, "card-desc");
+            description.EnableInClassList("card-desc-long", card.Action == CardAction.Technique || card.Action == CardAction.Copy);
+            view.Add(description);
+            if (card.HasAttack)
+                AddStat(view, "attack", (card.Damage + extraAttack).ToString(), "attack-corner");
             switch (card.Action)
             {
                 case CardAction.Freeze: AddStat(view, "snow", card.Amount.ToString(), "bottom-badge"); break;
@@ -1369,7 +1562,7 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.Weakness, unit.Weakness);
             AddEffectBadge(statuses, EffectKind.Block, unit.Block);
             AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
-            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns);
+            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns + unit.AuraThorns);
             AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
             AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
             if (statuses.childCount > 0)
@@ -1381,15 +1574,15 @@ namespace Frostline
             AddPortrait(view, type.Art);
             view.Add(Text(type.Name, "face-title"));
             var traits = Element("traits");
-            if (type.Pattern != AttackPattern.Front || type.ResistSnow || type.Frenzy > 1)
+            if (unit.Pattern != AttackPattern.Front || type.ResistSnow || unit.Frenzy > 1)
             {
                 var tags = Element("trait-row");
-                if (type.Pattern != AttackPattern.Front)
-                    tags.Add(Text(Expedition.PatternName(type.Pattern), "trait"));
+                if (unit.Pattern != AttackPattern.Front)
+                    tags.Add(Text(Expedition.PatternName(unit.Pattern), "trait"));
                 if (type.ResistSnow)
                     tags.Add(Icon("snow", "resist-icon"));
-                if (type.Frenzy > 1)
-                    tags.Add(Text($"狂热 ×{type.Frenzy}", "trait"));
+                if (unit.Frenzy > 1)
+                    tags.Add(Text($"狂热 ×{unit.Frenzy}", "trait"));
                 traits.Add(tags);
             }
             if (type.Ability.Effect != EffectKind.None)
@@ -1397,7 +1590,7 @@ namespace Frostline
                 var skill = Element("ability-value");
                 skill.Add(Text(type.Ability.Timing, "ability-trigger"));
                 skill.Add(Icon(EffectIcon(type.Ability.Effect), "ability-icon"));
-                skill.Add(Text($"+{type.Ability.Amount + unit.AbilityBonus}", "ability-amount"));
+                skill.Add(Text(type.Ability.Effect == EffectKind.JunkPower ? "" : $"+{type.Ability.Amount + unit.AbilityBonus}", "ability-amount"));
                 skill.EnableInClassList("silenced", unit.Ink > 0);
                 traits.Add(skill);
             }

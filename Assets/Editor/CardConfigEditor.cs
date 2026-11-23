@@ -12,6 +12,7 @@ namespace Frostline
             Draw("displayName", "卡名");
             Draw("portrait", "插画");
             Draw("action", "卡牌类型");
+            Draw("catalogGroup", "图鉴分类");
             var action = (CardAction)serializedObject.FindProperty("action").enumValueIndex;
             if (action == CardAction.Deploy)
             {
@@ -33,7 +34,14 @@ namespace Frostline
                 if (effect is not EffectKind.AttackGrowth and not EffectKind.HealthGrowth)
                     Draw("targetsEnemy", "以敌方为目标");
             }
-            else if (action != CardAction.Shift)
+            else if (action == CardAction.Technique)
+            {
+                Draw("damage", "伤害");
+                Draw("effect", "效果");
+                Draw("amount", "效果数值");
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("technique"), new GUIContent("目标和使用规则"), true);
+            }
+            else if (action is not CardAction.Shift and not CardAction.Copy)
             {
                 if (action is CardAction.Strike or CardAction.Freeze)
                     Draw("damage", "伤害");

@@ -142,9 +142,13 @@
 .effect-burn { background-color: #934b2e; }
 .effect-exposed { background-color: #744552; }
 .order-note {
-    display: none; position: absolute; left: 0; right: 0; top: 22px;
-    font-size: 16px; color: #142e36; -unity-font-style: bold; -unity-text-align: middle-center;
+    visibility: hidden; align-self: center; min-width: 235px; max-width: 80%;
+    height: 26px; flex-shrink: 0; margin-bottom: 5px; padding: 0 12px;
+    border-width: 1px; border-color: #6d9e9e; border-radius: 5px;
+    background-color: #183440; color: #d7ebe4;
+    font-size: 14px; -unity-font-style: bold; -unity-text-align: middle-center;
 }
+.order-note.danger { color: #ffe0c7; border-color: #d68277; background-color: #593846; }
 .empty-mark { color: rgba(234, 255, 250, 0.78); font-size: 22px; -unity-text-align: middle-center; }
 .stat {
     position: absolute; height: 26px; min-width: 32px; padding: 0 4px;
@@ -190,6 +194,14 @@
     border-width: 1px; border-color: #efac87; border-radius: 4px; background-color: #593944;
     color: #ffe2bc; font-size: 14px; -unity-text-align: middle-center; -unity-font-style: bold;
 }
+.forecast-chip {
+    position: absolute; left: 2px; right: 2px; bottom: 1px; height: 20px;
+    margin: 0; border-width: 1px; border-color: #63a6a7; border-radius: 3px;
+    background-color: #28536a; color: #e3f6fa; font-size: 12px;
+    -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.forecast-chip.forecast-danger { color: #ffe3ce; border-color: #df9a83; background-color: #67384a; }
+.forecast-chip.forecast-gain { color: #e4f9d8; border-color: #9accaa; background-color: #335d55; }
 .burst {
     position: absolute; left: 4px; right: 4px; top: 40%; height: 36px; border-radius: 5px;
     color: #fff1c7; background-color: rgba(85, 48, 43, 0.97); font-size: 23px; -unity-font-style: bold;
@@ -211,6 +223,9 @@
 .slot.possible { border-color: #dcbdff; background-color: #685477; }
 .slot.possible .face-art { border-color: #dcbdff; }
 .slot.incoming { border-color: #ff9374; background-color: #874756; }
+.slot.drop-valid.empty, .slot.drop-valid.unit-face { border-color: #b9efd0; background-color: #376d63; }
+.slot.drop-valid .face-art { border-color: #b9efd0; }
+.slot.drop-invalid.empty, .slot.drop-invalid.unit-face { border-color: #e29691; }
 .slot.motion-source, .card.motion-source { opacity: 0.30; }
 .strike-trail { position: absolute; background-color: #fff8ce; rotate: 42deg; border-radius: 6px; }
 .notice-bar {
@@ -239,7 +254,11 @@
 .deck-button { min-height: 41px; margin-top: 8px; }
 .primary { min-height: 51px; background-color: #e9be79; border-color: #ffdb9e; color: #283232; white-space: normal; }
 .primary:hover { background-color: #f8daa0; border-color: #ffebc6; }
-.hand { flex-grow: 1; min-width: 0; justify-content: center; flex-direction: row; }
+.hand-scroll { flex-grow: 1; min-width: 0; }
+.hand-scroll .unity-scroll-view__content-container { flex-grow: 1; }
+.hand { flex-grow: 1; min-width: 0; padding-top: 8px; justify-content: center; flex-direction: row; }
+.hand.many-cards { justify-content: flex-start; }
+.hand.many-cards .card { flex-grow: 0; flex-shrink: 0; flex-basis: 135px; }
 .card {
     flex-grow: 1; flex-basis: 0; min-width: 0; max-width: 173px; margin: 0 5px;
     position: relative; justify-content: flex-start; align-items: stretch;
@@ -247,6 +266,10 @@
 .card.item-card { background-color: #533f45; border-color: #c4a882; }
 .card:hover { border-color: #fff0c0; translate: 0 -5px; }
 .card.selected, .card.selected:hover { border-color: #ffdc91; background-color: #554730; translate: 0 -7px; }
+.card.hand-target { border-color: #b9efd0; }
+.card .card-desc-long, .deck-card-face .card-desc-long, .floating-card .card-desc-long {
+    height: 83px; padding-bottom: 2px; font-size: 12px;
+}
 .card-desc {
     height: 62px; padding: 1px 4px 23px 4px; font-size: 13px; white-space: normal; color: #f3e8d3;
     -unity-text-align: middle-center;
@@ -254,13 +277,15 @@
 .redraw { padding-left: 40px; position: relative; min-height: 57px; font-size: 17px; }
 .bell-icon { position: absolute; left: 12px; top: 15px; width: 23px; height: 24px; background-size: contain; background-repeat: no-repeat; }
 .redraw-note { margin-top: 5px; color: #b7d1d3; font-size: 13px; -unity-text-align: middle-center; }
+.junk-per-turn-note { display: none; color: #edcb92; }
 .redraw.redraw-ready { background-color: #94c8aa; border-color: #cde6c0; }
 .floating-card {
     position: absolute; justify-content: flex-start; align-items: stretch;
     border-color: #f7d592; background-color: #2c4a55;
 }
 .floating-card.item-card { background-color: #533f45; }
-.floating-card.drop-ready { border-color: #fff0ad; background-color: #71573d; }
+.floating-card.drop-ready { border-color: #c2f7d2; background-color: #3d705e; }
+.floating-card.drop-blocked { border-color: #dc8b88; }
 .overlay {
     position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: none; align-items: center; justify-content: center;
     background-color: rgba(6, 18, 32, 0.78);

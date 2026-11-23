@@ -12,64 +12,69 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0215805b8dd85d589320332d588260b2, type: 3}
   m_Name: ExpeditionConfig
   m_EditorClassIdentifier:
-  loadouts:
-  - captain: {fileID: 11400000, guid: bb69918774955eb08d66a62a86ec14a6, type: 2}
-    deckName: "巡路牌组"
-    strategy: "把辣椒和催行哨留给能连续攻击的飞索信使。"
-    startingDeck:
-    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
-    - {fileID: 11400000, guid: 3126c636005657e8a69f6dee7d524cec, type: 2}
-    - {fileID: 11400000, guid: b82fe6c12dcd5bbd97fb1b0fd44f1496, type: 2}
-    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
-    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
-    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
-    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
-    - {fileID: 11400000, guid: 20b4a8863f46512d93cba20053e4b1bd, type: 2}
-    startingSupplies:
-    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
-    - {fileID: 11400000, guid: b92e2f75805859ec8ac8e2af0bd70761, type: 2}
-    - {fileID: 11400000, guid: 77680002053d477092816917e64a4d5f, type: 2}
-    signatureReward: {fileID: 11400000, guid: 3495a5b765fb50dbbb5a3a8866e10c3e, type: 2}
-  - captain: {fileID: 11400000, guid: ca51031f2f3d59c385b20eb84f50ecec, type: 2}
-    deckName: "过载牌组"
-    strategy: "用电荷罐和横扫叠过载，再压低目标生命引爆同排。"
-    startingDeck:
-    - {fileID: 11400000, guid: 1c1cd056e760526f9bf68806b97b383e, type: 2}
-    - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
-    - {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
-    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
-    - {fileID: 11400000, guid: 33f5e922785750b78ce8bfb19fe6df4a, type: 2}
-    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
-    - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
-    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
-    startingSupplies:
-    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
-    - {fileID: 11400000, guid: 1b4c63b3c96e5a28acd54604bf21d192, type: 2}
-    - {fileID: 11400000, guid: e3d6cae66d73555bbc863d22a9a7e905, type: 2}
-    signatureReward: {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
-  - captain: {fileID: 11400000, guid: 8e7e91fc601c5ea9b2c10625c583fb43, type: 2}
-    deckName: "雪球牌组"
-    strategy: "用雪球卡住行动，趁目标带雪球时打出裂霜刃。"
-    startingDeck:
-    - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
-    - {fileID: 11400000, guid: 7d3a3741d8c75e62a6e14dd4bb43fe18, type: 2}
-    - {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
-    - {fileID: 11400000, guid: 3126c636005657e8a69f6dee7d524cec, type: 2}
-    - {fileID: 11400000, guid: 7d3a3741d8c75e62a6e14dd4bb43fe18, type: 2}
-    - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
-    - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
-    - {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
-    startingSupplies:
-    - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
-    - {fileID: 11400000, guid: 8e87491b809c5d539531f57352629bc9, type: 2}
-    - {fileID: 11400000, guid: e3d6cae66d73555bbc863d22a9a7e905, type: 2}
-    signatureReward: {fileID: 11400000, guid: db24164b9b6c5403a3ec5f1660eb97ea, type: 2}
+  loadouts: []
+  factions:
+  - {fileID: 11400000, guid: 0d4515075bb854e7a4588fb478887e46, type: 2}
+  - {fileID: 11400000, guid: c25909602c105a2887ac8202448395c1, type: 2}
+  sharedRecruits:
+  - {fileID: 11400000, guid: 0320019f87c9589794b174b8fcd6d4f2, type: 2}
+  - {fileID: 11400000, guid: 1bc26daa09c657778b7f2f2ac943940f, type: 2}
+  sharedItems:
+  - {fileID: 11400000, guid: b8fe489e8b2259c49cf2fa7c3a2043b7, type: 2}
+  - {fileID: 11400000, guid: 149cc0f96fea57f8bc3e66f869f56c23, type: 2}
+  - {fileID: 11400000, guid: c018a682407a5eca84135ad66dd7b02e, type: 2}
+  - {fileID: 11400000, guid: 02811f8cac045ab2a8ab05e2be044b77, type: 2}
+  catalogCards:
+  - {fileID: 11400000, guid: cefdb732ee2b5480bb3d80a2d1831d9a, type: 2}
+  - {fileID: 11400000, guid: da62278ce3d35404baad91fec21082ba, type: 2}
+  - {fileID: 11400000, guid: 1b18a307ab5459c3a744e6c3cc9a573a, type: 2}
+  - {fileID: 11400000, guid: ad93d2febf2f5225ab810d74577bdfdc, type: 2}
+  - {fileID: 11400000, guid: e39677a06cbb52edbd77f4c03226772f, type: 2}
+  - {fileID: 11400000, guid: ad9131b73a3b52d59cb0c8baa31f1049, type: 2}
+  - {fileID: 11400000, guid: b98e5876c4dd579097c634881107db16, type: 2}
+  - {fileID: 11400000, guid: b6dc41b5f9d55d48861593c86fd660f2, type: 2}
+  - {fileID: 11400000, guid: f5082c50578254ff8d2289ffe3c65978, type: 2}
+  - {fileID: 11400000, guid: a0afba0a74bd58e88f2e728b062d8cff, type: 2}
+  - {fileID: 11400000, guid: 116e6d35e22a5364b9cfd974aad63687, type: 2}
+  - {fileID: 11400000, guid: d27679ec456f520587892bc7a01dccd6, type: 2}
+  - {fileID: 11400000, guid: 0320019f87c9589794b174b8fcd6d4f2, type: 2}
+  - {fileID: 11400000, guid: 1bc26daa09c657778b7f2f2ac943940f, type: 2}
+  - {fileID: 11400000, guid: 473b64657b97596bb01b7c01dde1a956, type: 2}
+  - {fileID: 11400000, guid: 5dfc1655ae585bda9234f41140f44708, type: 2}
+  - {fileID: 11400000, guid: f8d8fe8b27035313b4f148c89f6d92a0, type: 2}
+  - {fileID: 11400000, guid: 5d6e71bcd7b65a02b752300ce14796c1, type: 2}
+  - {fileID: 11400000, guid: be9334d4936c5afd978594644b1961c5, type: 2}
+  - {fileID: 11400000, guid: 0453093fc0165fd882eaac50d2d6b32a, type: 2}
+  - {fileID: 11400000, guid: 2ec81a05b32659c8bd4f1e9465e0f4e0, type: 2}
+  - {fileID: 11400000, guid: c1db1e37868c5678a407dd9e55ee50cb, type: 2}
+  - {fileID: 11400000, guid: abcd8ff3354f558bbf88772f6c3bfec8, type: 2}
+  - {fileID: 11400000, guid: abfdd4d6d69d5919a401aef2a8ae60ba, type: 2}
+  - {fileID: 11400000, guid: ec7fd6dc80bc5156a1d77fb82774a9ba, type: 2}
+  - {fileID: 11400000, guid: e2de4755ff92596c8cb0c67105eb7684, type: 2}
+  - {fileID: 11400000, guid: 5905fad2306c5b51b6f0a8137481b5f2, type: 2}
+  - {fileID: 11400000, guid: f1e5b0e6a43b5958a80d649d833ebf1a, type: 2}
+  - {fileID: 11400000, guid: 8053aa75105b52dea758159e981019f4, type: 2}
+  - {fileID: 11400000, guid: 46d06dc1ead0534ab11a88967316b910, type: 2}
+  - {fileID: 11400000, guid: d572030aa117523692596bd9ea3346b6, type: 2}
+  - {fileID: 11400000, guid: 1c769e645fd159929efc8d0ff41bea96, type: 2}
+  - {fileID: 11400000, guid: a43639c398115f54bff14bec9226202a, type: 2}
+  - {fileID: 11400000, guid: 6aa239b1bc0c59f2907ee23162f21236, type: 2}
+  - {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
+  - {fileID: 11400000, guid: 666caa75e96b5b088ea4659647e4883d, type: 2}
+  - {fileID: 11400000, guid: 7bc09f90307057b08567b787693581d1, type: 2}
+  - {fileID: 11400000, guid: f4a6a546e7054db895346fa80a39e052, type: 2}
+  - {fileID: 11400000, guid: b8fe489e8b2259c49cf2fa7c3a2043b7, type: 2}
+  - {fileID: 11400000, guid: 149cc0f96fea57f8bc3e66f869f56c23, type: 2}
+  - {fileID: 11400000, guid: c018a682407a5eca84135ad66dd7b02e, type: 2}
+  - {fileID: 11400000, guid: 02811f8cac045ab2a8ab05e2be044b77, type: 2}
+  junkCard: {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
   companions:
   - {fileID: 11400000, guid: 1ba18876cd2657f7a54c10a1f345b125, type: 2}
   - {fileID: 11400000, guid: 28063c2f25f45d678153db954fe4931b, type: 2}
   - {fileID: 11400000, guid: 12869b3b5773578cbe99d458ed9e91ec, type: 2}
   stages:
   - title: "选择低级关卡"
+    recruitCompanions: 1
     encounters:
     - {fileID: 11400000, guid: 127d726042a150b89c54d7bacf3114ea, type: 2}
     - {fileID: 11400000, guid: db6734ad319b5947991427fc5a4b0099, type: 2}
@@ -78,6 +83,7 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 7639a5efa4e65bed917bb45103c1e767, type: 2}
     - {fileID: 11400000, guid: 51314b55f1ff5ec1a5294ea4bcc8ef32, type: 2}
   - title: "选择封锁线"
+    recruitCompanions: 1
     encounters:
     - {fileID: 11400000, guid: 6c22484943f050c982deb573f1aadf9b, type: 2}
     - {fileID: 11400000, guid: 7d69d5600ed65ee2a41ef058f84a55c2, type: 2}

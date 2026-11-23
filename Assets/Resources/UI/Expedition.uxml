@@ -10,6 +10,7 @@
         <ui:Button name="start-expedition" text="开始远征" class="button primary title-start" focusable="false" />
         <ui:VisualElement class="title-actions">
           <ui:Button name="title-help" text="玩法说明" class="button" focusable="false" />
+          <ui:Button name="title-codex" text="图鉴 [C]" class="button" focusable="false" />
           <ui:Button name="title-sound" class="button" focusable="false" />
         </ui:VisualElement>
         <ui:Label name="title-guide" text="开局先免费部署主角和随从。出牌推动倒计时，主角倒下即失败。Tab 查看行动顺序，B 查看牌组，空格换牌。" class="title-guide" />
@@ -30,17 +31,18 @@
         </ui:VisualElement>
         <ui:VisualElement class="top-actions">
           <ui:Button name="inspect-deck" text="牌组 [B]" class="button top-button" focusable="false" />
-          <ui:Button name="action-order" text="行动顺序 [Tab]" class="button top-button" />
+          <ui:Button name="battle-codex" text="图鉴 [C]" class="button top-button" focusable="false" />
+          <ui:Button name="action-order" text="行动预览 [Tab]" class="button top-button" />
           <ui:Button name="battle-sound" class="button top-button" focusable="false" />
           <ui:Button name="restart" text="重开本战" class="button top-button" />
         </ui:VisualElement>
       </ui:VisualElement>
       <ui:VisualElement class="arena">
+        <ui:Label name="order-note" class="order-note" picking-mode="Ignore" />
         <ui:VisualElement class="side-labels">
           <ui:Label text="探险队" class="side-label crew-label" />
           <ui:Label text="拦路者" class="side-label enemy-label" />
         </ui:VisualElement>
-        <ui:Label name="order-note" class="order-note" />
         <ui:VisualElement name="formations" class="formations" />
         <ui:VisualElement class="notice-bar">
           <ui:Label name="notice" class="notice" />
@@ -59,11 +61,13 @@
           </ui:Button>
           <ui:Button name="recall" text="收回队员" class="button deck-button" />
         </ui:VisualElement>
-        <ui:VisualElement name="hand" class="hand" />
+        <ui:ScrollView name="hand-scroll" mode="Horizontal" class="hand-scroll" horizontal-scroller-visibility="Auto" vertical-scroller-visibility="Hidden">
+          <ui:VisualElement name="hand" class="hand" />
+        </ui:ScrollView>
         <ui:VisualElement class="actions">
           <ui:Button name="redraw" class="button primary redraw" />
           <ui:Label name="redraw-note" class="redraw-note" />
-
+          <ui:Label name="junk-per-turn-note" class="redraw-note junk-per-turn-note" />
         </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
@@ -76,13 +80,14 @@
         <ui:VisualElement class="dialog-actions">
           <ui:Button name="change-loadout" text="返回主角选择" class="button dialog-action" focusable="false" />
           <ui:Button name="route-deck" text="查看牌组 [B]" class="button dialog-action" focusable="false" />
+          <ui:Button name="route-codex" text="图鉴 [C]" class="button dialog-action" focusable="false" />
         </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="deck-overlay" class="overlay deck-overlay">
       <ui:VisualElement class="deck-panel">
         <ui:VisualElement class="deck-heading">
-          <ui:Label text="牌组一览" class="result-title" />
+          <ui:Label name="deck-title" text="牌组一览" class="result-title" />
           <ui:Button name="close-deck" text="关闭 [Esc]" class="button" focusable="false" />
         </ui:VisualElement>
         <ui:VisualElement class="deck-navigation">
@@ -90,6 +95,7 @@
           <ui:Button name="deck-draw-tab" class="button deck-tab" focusable="false" />
           <ui:Button name="deck-discard-tab" class="button deck-tab" focusable="false" />
         </ui:VisualElement>
+        <ui:VisualElement name="codex-tabs" class="deck-navigation" />
         <ui:Label name="deck-summary" class="deck-summary" />
         <ui:VisualElement class="deck-body">
           <ui:ScrollView name="deck-scroll" class="deck-scroll" mode="Vertical">

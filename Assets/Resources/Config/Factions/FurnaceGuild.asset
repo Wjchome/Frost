@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 323f9014167e5a3aae0a6a5a32474567, type: 3}
+  m_Name: FurnaceGuild
+  m_EditorClassIdentifier:
+  displayName: "炉桥工团"
+  strategy: "给敌人叠过载，再用回火钳压低生命，引爆同排。"
+  leaders:
+  - {fileID: 11400000, guid: ca51031f2f3d59c385b20eb84f50ecec, type: 2}
+  - {fileID: 11400000, guid: 3eda7bafa0e55c449aaa41ac62e1b376, type: 2}
+  - {fileID: 11400000, guid: da15851c86ec5b0796dde909349fb838, type: 2}
+  - {fileID: 11400000, guid: f675e40abfa6539cb8d7b3c1dd138a8e, type: 2}
+  startingDeck:
+  - {fileID: 11400000, guid: 1c1cd056e760526f9bf68806b97b383e, type: 2}
+  - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
+  - {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
+  - {fileID: 11400000, guid: 17445835f15655adba9882b402cbfa66, type: 2}
+  - {fileID: 11400000, guid: be1a57039c825bddadbd485652d42160, type: 2}
+  - {fileID: 11400000, guid: f3a655db8a4655c98b4b86df133e1d4b, type: 2}
+  - {fileID: 11400000, guid: 0dfc5b210b665feab43bda869e6a2195, type: 2}
+  - {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}
+  - {fileID: 11400000, guid: 1b4c63b3c96e5a28acd54604bf21d192, type: 2}
+  startingSupplies:
+  - {fileID: 11400000, guid: d2d542c11440531aa55cb336744412d1, type: 2}
+  - {fileID: 11400000, guid: 1b4c63b3c96e5a28acd54604bf21d192, type: 2}
+  - {fileID: 11400000, guid: e3d6cae66d73555bbc863d22a9a7e905, type: 2}
+  exclusiveRecruits:
+  - {fileID: 11400000, guid: 1c1cd056e760526f9bf68806b97b383e, type: 2}
+  - {fileID: 11400000, guid: 40046073e5ce556b9d21ecebf2c5d3a4, type: 2}
+  - {fileID: 11400000, guid: abba6eb982915d0f933ae7456dbb6129, type: 2}
+  signatureReward: {fileID: 11400000, guid: 65a80a23cd0557dcb49c04a74238abbf, type: 2}

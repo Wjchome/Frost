@@ -9,6 +9,7 @@ namespace Frostline
         public string displayName;
         public Texture2D portrait;
         public CardAction action;
+        public string catalogGroup;
 
         [Header("单位")]
         [Min(0)] public int power;
@@ -28,5 +29,6 @@ namespace Frostline
         [Min(0)] public int damage;
         public EffectKind bonusAgainst;
         [Min(0)] public int bonusDamage;
+        public CardTechnique technique = new();
     }
 }
