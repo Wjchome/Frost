@@ -14,23 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "白幕堡垒"
   landscape: {fileID: 2800000, guid: a181dcdd560257a3b3991a776aef90f0, type: 3}
-  briefing: "门庭机兵横扫施加易伤，援护哨手会为同排前方单位补护壳。"
+  briefing: "终波的大雪怪施加雪球，雪吞吞也在另一排登场。"
   reinforcementInterval: 4
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: 78bcad3c943a56b580d05e4df4ec5bc8, type: 2}
+    - unit: {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: b3b2f815e50b51c897f9639c422338e8, type: 2}
+    - unit: {fileID: 11400000, guid: f8d5116d59f25b76883aea7041507c31, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: d2a0ac2de2dc58b2930ad6d3c66c2ebf, type: 2}
+    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: b429b25e33a35cd2a60d29c8f15c7718, type: 2}
+    - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: e7b61fc56dfe503d8ffd8eb0a1fdb3cd, type: 2}
+    - unit: {fileID: 11400000, guid: 457cac37b8f25c36bde1f6957773c673, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ee11e1f53f165be98f8489d9cbb21ea8, type: 2}
+    - unit: {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
       row: 2
   pendantReward: 0
   rewardCards: []

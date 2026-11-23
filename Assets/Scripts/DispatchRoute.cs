@@ -75,13 +75,14 @@ namespace Frostline
         private readonly IReadOnlyList<Card> sharedRecruits;
         private readonly IReadOnlyList<Card> sharedItems;
         private readonly Card junk;
+        private readonly Card fruit;
         public IReadOnlyList<(string Group, Card Card)> Catalog { get; }
         public IReadOnlyList<UnitType> OpeningCompanions => Faction?.OpeningCompanions.Count > 0 ? Faction.OpeningCompanions : Companions;
         private readonly Random draftRandom;
 
         public DispatchRoute(StartingLoadout[] loadouts, UnitType[] companions, RouteStage[] stages,
             ExpeditionFaction[] factions = null, Card[] sharedRecruits = null, int? draftSeed = null,
-            (string Group, Card Card)[] catalog = null, Card[] sharedItems = null, Card junk = null)
+            (string Group, Card Card)[] catalog = null, Card[] sharedItems = null, Card junk = null, Card fruit = null)
         {
             Loadouts = Array.AsReadOnly(loadouts);
             Companions = Array.AsReadOnly(companions);
@@ -90,6 +91,7 @@ namespace Frostline
             this.sharedRecruits = Array.AsReadOnly(sharedRecruits ?? Array.Empty<Card>());
             this.sharedItems = Array.AsReadOnly(sharedItems ?? Array.Empty<Card>());
             this.junk = junk;
+            this.fruit = fruit;
             Catalog = Array.AsReadOnly(catalog ?? Array.Empty<(string, Card)>());
             draftRandom = draftSeed.HasValue ? new Random(draftSeed.Value) : new Random();
         }
@@ -150,7 +152,7 @@ namespace Frostline
                 return false;
             Encounter site = EncounterChoices[index];
             Rewards = BuildRewards(site);
-            Battle = new Expedition(site, deck, CaptainCard, CompanionCard, junk);
+            Battle = new Expedition(site, deck, CaptainCard, CompanionCard, junk, fruit);
             return true;
         }
 
@@ -167,7 +169,7 @@ namespace Frostline
         {
             if (Battle == null || Battle.Phase is BattlePhase.Won or BattlePhase.Resolving)
                 return false;
-            Battle = new Expedition(Battle.Location, deck, CaptainCard, CompanionCard, junk);
+            Battle = new Expedition(Battle.Location, deck, CaptainCard, CompanionCard, junk, fruit);
             return true;
         }
 

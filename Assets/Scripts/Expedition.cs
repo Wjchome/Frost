@@ -7,9 +7,10 @@ namespace Frostline
     public enum BattlePhase { Planning, Resolving, Won, Lost }
     public enum BattleEffect { Windup, Attack, Ice, Recovery, Arrival, Guard, Status, Burst, Retaliation, Burning }
     public enum AttackPattern { Front, Barrage, Longshot, Aimless, Support }
-    public enum EffectTrigger { Deploy, Hit, Kill, WhenHit, Act, WhileActive, AllyKill, Death, WhenJunkHit }
+    public enum EffectTrigger { Deploy, Hit, Kill, WhenHit, Act, WhileActive, AllyKill, Death, WhenJunkHit, SnowApplied, CardDestroyed, WhileWounded }
     public enum EffectKind { None, Heal, Shell, Snow, Spice, Overload, Ink, Weakness, Block, EffectBonus, Thorns, Burn, AttackGrowth, Exposed, HealthGrowth,
-        AttackUp, Frenzy, Aimless, Barrage, Countdown, MaxCountdown, Draw, Junk, RecycleDraw, RandomStat, JunkPower, Cleanse, Hurt }
+        AttackUp, Frenzy, Aimless, Barrage, Countdown, MaxCountdown, Draw, Junk, RecycleDraw, RandomStat, JunkPower, Cleanse, Hurt,
+        Retaliate, TeamSpice, AttackDown, StickyFruit }
     public enum CardTarget { Enemy, Ally, Either, AllEnemies, AllAllies, HealthyEnemies, None, AllUnits }
     public enum Pendant { None, WarmStone, TuningRing, SwiftClasp }
 
@@ -56,6 +57,9 @@ namespace Frostline
             EffectTrigger.AllyKill => "友军击杀",
             EffectTrigger.Death => "死亡",
             EffectTrigger.WhenJunkHit => "被垃圾命中",
+            EffectTrigger.SnowApplied => "雪球施加",
+            EffectTrigger.CardDestroyed => "卡牌摧毁",
+            EffectTrigger.WhileWounded => "受伤",
             _ => ""
         };
 
@@ -69,7 +73,24 @@ namespace Frostline
                 case EffectKind.Junk: return $"{Timing}时向手牌生成 {amount} 张垃圾";
                 case EffectKind.RecycleDraw: return $"行动时摧毁手中所有垃圾，每张抽 {amount} 张牌";
                 case EffectKind.JunkPower: return "在场时，手中每张垃圾增加等同于此单位攻击力的伤害";
+                case EffectKind.Retaliate: return "被单位攻击后，若存活且未被雪球冻住，就以当前攻击力反击";
+                case EffectKind.TeamSpice: return $"受击时，所有友军获得 {amount} 层辣椒";
+                case EffectKind.AttackDown: return $"受击时，自身攻击 −{amount}（本场）";
+                case EffectKind.StickyFruit: return $"受击时，将 {amount} 张黏黏水果加入玩家手牌";
             }
+            if (Effect == EffectKind.AttackUp)
+            {
+                if (Trigger == EffectTrigger.SnowApplied)
+                    return $"有单位获得雪球时，自身攻击 +{amount}（本场）";
+                if (Trigger == EffectTrigger.CardDestroyed)
+                    return $"有牌被摧毁时，自身攻击 +{amount}（本场）";
+                if (Trigger == EffectTrigger.WhileWounded)
+                    return $"生命低于上限时，自身攻击 +{amount}";
+                if (Trigger is EffectTrigger.WhenHit or EffectTrigger.Act)
+                    return $"{Timing}时自身攻击 +{amount}（本场）";
+            }
+            if (Trigger == EffectTrigger.Act && Effect == EffectKind.Shell)
+                return $"行动时，自身获得 {amount} 点护甲";
             if (Trigger == EffectTrigger.AllyKill)
                 return $"任意友军单位击倒敌人时，给击杀者 {amount} 点护盾";
             if (Trigger == EffectTrigger.WhileActive)
@@ -113,6 +134,10 @@ namespace Frostline
             EffectKind.JunkPower => "垃圾攻击",
             EffectKind.Cleanse => "净化",
             EffectKind.Hurt => "失去生命",
+            EffectKind.Retaliate => "反击",
+            EffectKind.TeamSpice => "辣椒",
+            EffectKind.AttackDown => "攻击",
+            EffectKind.StickyFruit => "黏黏水果",
             _ => ""
         };
 
@@ -172,9 +197,11 @@ namespace Frostline
         public bool Aimless, Barrage;
         internal UnitProgress Progress { get; private set; }
         public int BaseAttack => Progress.Attack;
-        public int Attack => Math.Max(0, BaseAttack + BattleAttack + AuraAttack + Spice - Weakness);
+        public int Attack => Math.Max(0, BaseAttack + BattleAttack + AuraAttack + Spice - Weakness + WoundedAttack);
+        private int WoundedAttack => Health < MaxHealth && Ink == 0 && Type.Ability.Trigger == EffectTrigger.WhileWounded
+            && Type.Ability.Effect == EffectKind.AttackUp ? Type.Ability.Amount + AbilityBonus : 0;
         public int MaxHealth => Progress.Health + Pendants.Health(Pendant) + BattleHealth;
-        public int Period => Math.Max(1, Type.Period - Pendants.Speed(Pendant) - CounterReduction);
+        public int Period => Type.Period == 0 ? 0 : Math.Max(1, Type.Period - Pendants.Speed(Pendant) - CounterReduction);
         public int Frenzy => Type.Frenzy + BonusFrenzy;
         public AttackPattern Pattern => Aimless ? AttackPattern.Aimless : Barrage ? AttackPattern.Barrage : Type.Pattern;
         public int AbilityBonus => EffectBonus + Pendants.Effect(Pendant);
@@ -467,6 +494,7 @@ namespace Frostline
         private List<Card> draw;
         private readonly Card captainCard;
         private readonly Card junkCard;
+        private readonly Card stickyFruit;
         private List<Card> discard = new();
         private List<Card> hand = new();
 
@@ -493,13 +521,14 @@ namespace Frostline
         public Expedition(Encounter location, IEnumerable<Card> deck, UnitType captain, UnitType companion = null)
             : this(location, deck, new Card(captain).Recruit(), companion == null ? null : new Card(companion).Recruit()) { }
 
-        internal Expedition(Encounter location, IEnumerable<Card> deck, Card captain, Card companion, Card junk = null)
+        internal Expedition(Encounter location, IEnumerable<Card> deck, Card captain, Card companion, Card junk = null, Card fruit = null)
         {
             Location = location;
             Reinforcements = location.WaveInterval;
             draw = new List<Card>(deck);
             captainCard = captain;
             junkCard = junk;
+            stickyFruit = fruit;
             hand.Add(captainCard);
             Companion = companion?.Unit;
             if (Companion != null)
@@ -743,6 +772,8 @@ namespace Frostline
                     yield return Hit(target, target, card.DamageAgainst(unit), card.Name);
                     foreach (BattleBeat burst in CheckOverload(target))
                         yield return burst;
+                    foreach (BattleBeat reaction in ResolveItemHit(target, card.IsJunk))
+                        yield return reaction;
                     if (card.Action == CardAction.Freeze && At(target) != null)
                     {
                         foreach (BattleBeat effect in ApplyEffect(target, target, EffectKind.Snow, card.Amount))
@@ -827,6 +858,9 @@ namespace Frostline
                     continue;
                 }
 
+                if (attacker.Period == 0)
+                    continue;
+
                 attacker.Counter = Math.Max(0, attacker.Counter - 1);
                 if (attacker.Counter != 0)
                     continue;
@@ -855,7 +889,7 @@ namespace Frostline
             if (Wave < Location.WaveCount)
             {
                 Reinforcements = HasEnemies() ? Math.Max(0, Reinforcements - 1) : 0;
-                if (Reinforcements == 0 && FreeEnemySlots() >= NextWave.Count)
+                if (Reinforcements == 0 && HasRoomForNextWave())
                 {
                     foreach (BattleBeat beat in Reinforce())
                         yield return beat;
@@ -938,13 +972,10 @@ namespace Frostline
                         yield return effect;
                 }
 
-                if (attackPower > 0)
-                {
-                    foreach (BattleBeat reaction in ResolveReactions(source, targets))
-                        yield return reaction;
-                    if (Phase == BattlePhase.Lost || At(source) == null)
-                        yield break;
-                }
+                foreach (BattleBeat reaction in ResolveReactions(source, targets, attackPower > 0))
+                    yield return reaction;
+                if (Phase == BattlePhase.Lost || At(source) == null)
+                    yield break;
             }
 
             if (attacked)
@@ -956,7 +987,7 @@ namespace Frostline
             }
         }
 
-        private IEnumerable<BattleBeat> ResolveReactions(Position attacker, IReadOnlyList<Position> targets)
+        private IEnumerable<BattleBeat> ResolveReactions(Position attacker, IReadOnlyList<Position> targets, bool triggersThorns)
         {
             foreach (Position target in targets)
             {
@@ -970,7 +1001,7 @@ namespace Frostline
                     yield break;
 
                 int thorns = defender.Thorns + defender.AuraThorns;
-                if (thorns == 0)
+                if (thorns == 0 || !triggersThorns)
                     continue;
                 if (defender.Thorns > 0)
                     defender.Thorns--;
@@ -1008,6 +1039,12 @@ namespace Frostline
                 return Array.Empty<BattleBeat>();
             if (ability.Effect is EffectKind.Frenzy or EffectKind.Draw or EffectKind.Junk or EffectKind.RecycleDraw or EffectKind.RandomStat)
                 target = source;
+            if ((ability.Effect is EffectKind.AttackUp or EffectKind.AttackDown or EffectKind.TeamSpice or EffectKind.StickyFruit)
+                && trigger == EffectTrigger.WhenHit)
+                target = source;
+            if ((ability.Effect == EffectKind.Retaliate || ability.Effect == EffectKind.Snow && trigger == EffectTrigger.WhenHit)
+                && source.Equals(target))
+                return Array.Empty<BattleBeat>();
             return ApplyEffect(source, target, ability.Effect, (ability.Amount + unit.AbilityBonus) * times);
         }
 
@@ -1055,9 +1092,32 @@ namespace Frostline
                     if (unit.Type.ResistSnow)
                         amount = Math.Min(amount, 1 - unit.Frozen);
                     unit.Frozen += amount;
+                    if (amount > 0)
+                        GainAttackOnEvent(EffectTrigger.SnowApplied);
                     feedback = BattleEffect.Ice;
                     break;
                 case EffectKind.Spice: unit.Spice += amount; break;
+                case EffectKind.TeamSpice:
+                    foreach (Position ally in TurnOrder())
+                        if (ally.Enemy == target.Enemy && At(ally) is Unit teammate)
+                            teammate.Spice += amount;
+                    break;
+                case EffectKind.StickyFruit:
+                    if (stickyFruit == null)
+                        yield break;
+                    for (int i = 0; i < amount; i++)
+                        hand.Add(stickyFruit);
+                    break;
+                case EffectKind.Retaliate:
+                    if (At(source) is not Unit counterattacker || source.Enemy == target.Enemy || counterattacker.Frozen > 0)
+                        yield break;
+                    yield return Hit(source, target, counterattacker.Attack, counterattacker.Type.Name, BattleEffect.Retaliation);
+                    foreach (BattleBeat burst in CheckOverload(target))
+                        yield return burst;
+                    if (At(target) == null && Phase != BattlePhase.Lost)
+                        foreach (BattleBeat reward in RewardAllyKill(source, 1))
+                            yield return reward;
+                    yield break;
                 case EffectKind.Overload: unit.Overload += amount; break;
                 case EffectKind.Ink: unit.Ink += amount; break;
                 case EffectKind.Weakness: unit.Weakness += amount; break;
@@ -1067,11 +1127,13 @@ namespace Frostline
                 case EffectKind.Burn: unit.Burn += amount; break;
                 case EffectKind.Exposed: unit.Exposed += amount; break;
                 case EffectKind.AttackUp: unit.BattleAttack += amount; break;
+                case EffectKind.AttackDown: unit.BattleAttack -= amount; break;
                 case EffectKind.Frenzy: unit.BonusFrenzy += amount; break;
                 case EffectKind.Aimless: unit.Aimless = true; break;
                 case EffectKind.Barrage: unit.Barrage = true; break;
                 case EffectKind.Countdown: unit.Counter = Math.Max(0, unit.Counter - amount); break;
                 case EffectKind.MaxCountdown:
+                    if (unit.Period == 0) yield break;
                     unit.CounterReduction += Math.Min(amount, unit.Period - 1);
                     unit.Counter = Math.Min(unit.Counter, unit.Period);
                     break;
@@ -1085,7 +1147,9 @@ namespace Frostline
                     break;
                 case EffectKind.RecycleDraw:
                     if (target.Enemy) yield break;
-                    DrawCards(hand.RemoveAll(card => card.IsJunk) * amount);
+                    int destroyed = hand.RemoveAll(card => card.IsJunk);
+                    GainAttackOnEvent(EffectTrigger.CardDestroyed, destroyed);
+                    DrawCards(destroyed * amount);
                     break;
                 case EffectKind.RandomStat:
                     foreach (BattleBeat boost in BoostRandomAlly(source, amount))
@@ -1120,7 +1184,8 @@ namespace Frostline
             {
                 EffectKind.Snow when amount == 0 => "抗雪球",
                 EffectKind.Aimless or EffectKind.Barrage or EffectKind.Cleanse => Effects.Name(effect),
-                EffectKind.Countdown or EffectKind.MaxCountdown => $"{Effects.Name(effect)} −{amount}",
+                EffectKind.Countdown or EffectKind.MaxCountdown or EffectKind.AttackDown => $"{Effects.Name(effect)} −{amount}",
+                EffectKind.TeamSpice => $"全体友军辣椒 +{amount}",
                 EffectKind.Hurt => $"生命 −{amount}",
                 _ => $"{Effects.Name(effect)} +{amount}"
             };
@@ -1198,10 +1263,9 @@ namespace Frostline
 
         private BattleBeat AddEnemy(int row, UnitType type)
         {
-            for (int offset = 0; offset < Rows; offset++)
             for (int slot = 0; slot < Slots; slot++)
             {
-                var pos = new Position(true, (row + offset) % Rows, slot);
+                var pos = new Position(true, row, slot);
                 if (At(pos) != null)
                     continue;
 
@@ -1285,14 +1349,18 @@ namespace Frostline
 
         private bool HasEnemies() => Front(true, 0).HasValue || Front(true, 1).HasValue;
 
-        private int FreeEnemySlots()
+        private bool HasRoomForNextWave()
         {
-            int empty = 0;
             for (int row = 0; row < Rows; row++)
-            for (int slot = 0; slot < Slots; slot++)
-                if (At(new Position(true, row, slot)) == null)
-                    empty++;
-            return empty;
+            {
+                int required = 0;
+                foreach (EnemySpawn enemy in NextWave)
+                    if (enemy.Row == row)
+                        required++;
+                if (required + OccupiedRow(new Position(true, row, 0)).Count > Slots)
+                    return false;
+            }
+            return true;
         }
 
         private void Set(Position pos, Unit unit)

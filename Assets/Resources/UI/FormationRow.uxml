@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <Style src="ExpeditionLayout.uss" />
+  <ui:VisualElement class="formation">
+    <ui:VisualElement class="side allies">
+      <ui:Button name="ally-2" class="slot empty" focusable="false"><ui:Label text="＋" class="empty-mark" picking-mode="Ignore" /></ui:Button>
+      <ui:Button name="ally-1" class="slot empty" focusable="false"><ui:Label text="＋" class="empty-mark" picking-mode="Ignore" /></ui:Button>
+      <ui:Button name="ally-0" class="slot empty" focusable="false"><ui:Label text="＋" class="empty-mark" picking-mode="Ignore" /></ui:Button>
+    </ui:VisualElement>
+    <ui:VisualElement class="midline" picking-mode="Ignore">
+      <ui:Label name="row-label" text="上排" class="row-label" picking-mode="Ignore" />
+    </ui:VisualElement>
+    <ui:VisualElement class="side enemies">
+      <ui:Button name="enemy-0" class="slot hostile empty" focusable="false" />
+      <ui:Button name="enemy-1" class="slot hostile empty" focusable="false" />
+      <ui:Button name="enemy-2" class="slot hostile empty" focusable="false" />
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

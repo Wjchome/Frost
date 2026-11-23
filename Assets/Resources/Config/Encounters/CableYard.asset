@@ -14,23 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "断索工段"
   landscape: {fileID: 2800000, guid: 5a7f1e9ae96c571aadfec3bccd6d28a5, type: 3}
-  briefing: "路闸守卫挨打后使攻击者虚弱。拆开他和援护哨手。"
+  briefing: "快快躲在山胡桃身后，给全队加攻。"
   reinforcementInterval: 4
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: 78bcad3c943a56b580d05e4df4ec5bc8, type: 2}
+    - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+    - unit: {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
+      row: 1
+  - enemies:
+    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: d2a0ac2de2dc58b2930ad6d3c66c2ebf, type: 2}
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: b3b2f815e50b51c897f9639c422338e8, type: 2}
-      row: 2
-  - enemies:
-    - unit: {fileID: 11400000, guid: 911d1354924d5604ad548f83122c65f7, type: 2}
-      row: 1
-    - unit: {fileID: 11400000, guid: b429b25e33a35cd2a60d29c8f15c7718, type: 2}
+    - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
       row: 2
   pendantReward: 2
   rewardCards:

@@ -37,6 +37,7 @@ namespace Frostline
         public CardConfig[] sharedItems = Array.Empty<CardConfig>();
         public CardConfig[] catalogCards = Array.Empty<CardConfig>();
         public CardConfig junkCard;
+        public CardConfig stickyFruit;
         public Stage[] stages = Array.Empty<Stage>();
 
         public DispatchRoute CreateRoute(IDictionary<string, Texture2D> textures)
@@ -54,8 +55,9 @@ namespace Frostline
                 Card card;
                 if (data.action == CardAction.Deploy)
                 {
-                    if (data.health < 1 || data.period < 1 || data.frenzy < 1)
-                        throw new InvalidOperationException($"{data.name} needs positive health, countdown and attack count.");
+                    bool reactionOnly = data.period == 0 && data.trigger == EffectTrigger.WhenHit && data.abilityEffect == EffectKind.Retaliate;
+                    if (data.health < 1 || data.frenzy < 1 || (data.period < 1 && !reactionOnly))
+                        throw new InvalidOperationException($"{data.name} needs valid health, countdown and attack count.");
                     var unit = new UnitType(data.displayName, art, data.power, data.health, data.period, data.pattern,
                         data.frenzy, new UnitAbility(data.trigger, data.abilityEffect, data.abilityAmount), data.resistSnow);
                     card = new Card(unit);
@@ -82,6 +84,8 @@ namespace Frostline
                     throw new InvalidOperationException($"{site.name} must define between one and six enemies in each wave.");
                 var waves = site.waves.Select(wave => wave.enemies.Select(enemy =>
                     new EnemySpawn(ReadUnit(enemy.unit), Mathf.Clamp(enemy.row, 1, Expedition.Rows) - 1)).ToArray()).ToArray();
+                if (waves.Any(wave => wave.GroupBy(enemy => enemy.Row).Any(row => row.Count() > Expedition.Slots)))
+                    throw new InvalidOperationException($"{site.name} contains a wave with too many enemies in one row.");
                 return new Encounter(site.displayName, RegisterTexture(site.landscape, textures), site.briefing,
                     Mathf.Max(1, site.reinforcementInterval), site.pendantReward, site.rewardCards.Select(ReadCard).ToArray(), waves);
             }
@@ -136,7 +140,8 @@ namespace Frostline
 
             return new DispatchRoute(Array.Empty<StartingLoadout>(), startingCompanions, routeStages, routeFactions, shared,
                 catalog: catalogCards.Select(value => (value.catalogGroup, ReadCard(value))).ToArray(),
-                sharedItems: sharedItems.Select(ReadCard).ToArray(), junk: junkCard == null ? null : ReadCard(junkCard));
+                sharedItems: sharedItems.Select(ReadCard).ToArray(), junk: junkCard == null ? null : ReadCard(junkCard),
+                fruit: stickyFruit == null ? null : ReadCard(stickyFruit));
         }
 
         private static string RegisterTexture(Texture2D texture, IDictionary<string, Texture2D> textures)

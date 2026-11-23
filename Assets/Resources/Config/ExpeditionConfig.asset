@@ -67,6 +67,30 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 149cc0f96fea57f8bc3e66f869f56c23, type: 2}
   - {fileID: 11400000, guid: c018a682407a5eca84135ad66dd7b02e, type: 2}
   - {fileID: 11400000, guid: 02811f8cac045ab2a8ab05e2be044b77, type: 2}
+  - {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
+  - {fileID: 11400000, guid: 457cac37b8f25c36bde1f6957773c673, type: 2}
+  - {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
+  - {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
+  - {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
+  - {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+  - {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
+  - {fileID: 11400000, guid: f8d5116d59f25b76883aea7041507c31, type: 2}
+  - {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
+  - {fileID: 11400000, guid: e81db3a193275da7a8357f37d0ba0751, type: 2}
+  - {fileID: 11400000, guid: 46d97c29823a5074b184ebaf0ffeba20, type: 2}
+  - {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
+  - {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
+  - {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
+  - {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
+  - {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
+  - {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+  - {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
+  - {fileID: 11400000, guid: c41bd3222b105248872792d86ad63667, type: 2}
+  - {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
+  - {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
+  - {fileID: 11400000, guid: 502c5e43c84e5faea60e34edc28f78a8, type: 2}
+  - {fileID: 11400000, guid: b1628b175dfc5689af45b62eef2e1559, type: 2}
+  stickyFruit: {fileID: 11400000, guid: b1628b175dfc5689af45b62eef2e1559, type: 2}
   junkCard: {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
   companions:
   - {fileID: 11400000, guid: 1ba18876cd2657f7a54c10a1f345b125, type: 2}

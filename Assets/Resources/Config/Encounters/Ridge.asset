@@ -14,23 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "白脊风口"
   landscape: {fileID: 2800000, guid: 27154edcaa3f47f4869abf83be35624d, type: 3}
-  briefing: "击打焦壳兽会招致灼烧，裂牙首领连续攻击并施加虚弱。"
+  briefing: "雪卷卷会反击。雪伯伯远射施加雪球，雪吞吞借雪球加攻。"
   reinforcementInterval: 3
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+    - unit: {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 056a2efb524c50b88b8af8b3dcc8349f, type: 2}
+    - unit: {fileID: 11400000, guid: c41bd3222b105248872792d86ad63667, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+    - unit: {fileID: 11400000, guid: f8d5116d59f25b76883aea7041507c31, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 57bef4f1bc85539ea36372e10842b967, type: 2}
+    - unit: {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: c7777a19bd3a545b8c87a36b0f1959f9, type: 2}
+    - unit: {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: b3b2f815e50b51c897f9639c422338e8, type: 2}
+    - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
       row: 2
   pendantReward: 1
   rewardCards:

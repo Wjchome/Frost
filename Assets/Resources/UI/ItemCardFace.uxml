@@ -1,0 +1,11 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <Style src="ExpeditionLayout.uss" />
+  <ui:VisualElement class="face-content item-content" picking-mode="Ignore">
+    <ui:VisualElement name="item-portrait" class="face-art item-portrait" picking-mode="Ignore" />
+    <ui:Label name="item-name" text="染墨瓶" class="face-title" picking-mode="Ignore" />
+    <ui:VisualElement class="item-rules" picking-mode="Ignore">
+      <ui:Label name="item-description" text="给敌方施加 墨水 +4。" class="card-desc" picking-mode="Ignore" />
+      <ui:VisualElement name="item-secondary" class="item-secondary" picking-mode="Ignore" />
+    </ui:VisualElement>
+  </ui:VisualElement>
+</ui:UXML>

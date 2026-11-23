@@ -53,11 +53,32 @@ namespace Frostline
             if (!pos.Enemy && HasActiveAbility(victim, EffectTrigger.Death, EffectKind.Junk))
                 GenerateJunk(victim.Type.Ability.Amount + victim.AbilityBonus);
             Set(pos, null);
+            GainAttackOnEvent(EffectTrigger.CardDestroyed);
             if (victim.Leader)
             {
                 Phase = BattlePhase.Lost;
                 Notice = $"{Captain.Name}倒下。";
             }
+        }
+
+        private void GainAttackOnEvent(EffectTrigger trigger, int times = 1)
+        {
+            if (times == 0)
+                return;
+            foreach (Position position in TurnOrder())
+                if (At(position) is Unit unit && HasActiveAbility(unit, trigger, EffectKind.AttackUp))
+                    unit.BattleAttack += (unit.Type.Ability.Amount + unit.AbilityBonus) * times;
+        }
+
+        private IEnumerable<BattleBeat> ResolveItemHit(Position target, bool isJunk)
+        {
+            if (At(target) is not Unit victim || Phase == BattlePhase.Lost)
+                yield break;
+            foreach (var beat in TriggerAbility(target, target, victim, EffectTrigger.WhenHit))
+                yield return beat;
+            if (isJunk)
+                foreach (var beat in TriggerAbility(target, target, victim, EffectTrigger.WhenJunkHit))
+                    yield return beat;
         }
 
         private IEnumerable<BattleBeat> BoostRandomAlly(Position source, int amount)
@@ -106,6 +127,7 @@ namespace Frostline
                     continue;
                 hand.RemoveAt(i);
                 cost--;
+                GainAttackOnEvent(EffectTrigger.CardDestroyed);
             }
         }
 
@@ -197,11 +219,8 @@ namespace Frostline
                         }
                         if (At(target) == null)
                             continue;
-                        foreach (var beat in TriggerAbility(target, target, victim, EffectTrigger.WhenHit))
+                        foreach (var beat in ResolveItemHit(target, card.IsJunk))
                             yield return beat;
-                        if (card.IsJunk)
-                            foreach (var beat in TriggerAbility(target, target, victim, EffectTrigger.WhenJunkHit))
-                                yield return beat;
                     }
                     if (card.Effect != EffectKind.None)
                         foreach (var beat in ApplyEffect(anchor, target, card.Effect, card.Amount))
@@ -214,7 +233,7 @@ namespace Frostline
                             yield return beat;
                     if (Phase == BattlePhase.Lost)
                         yield break;
-                    if (At(target) is Unit actor && actor.Counter == 0 && actor.Frozen == 0)
+                    if (At(target) is Unit actor && actor.Period > 0 && actor.Counter == 0 && actor.Frozen == 0)
                         foreach (var beat in Trigger(target, actor))
                             yield return beat;
                 }

@@ -1,4 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+  <Style src="ExpeditionLayout.uss" />
+  <ui:Template name="FormationRow" src="FormationRow.uxml" />
   <ui:VisualElement name="screen" class="screen">
     <ui:VisualElement name="background" class="background" picking-mode="Ignore" />
     <ui:VisualElement name="title-screen" class="title-screen">
@@ -11,12 +13,12 @@
         <ui:VisualElement class="title-actions">
           <ui:Button name="title-help" text="玩法说明" class="button" focusable="false" />
           <ui:Button name="title-codex" text="图鉴 [C]" class="button" focusable="false" />
-          <ui:Button name="title-sound" class="button" focusable="false" />
+          <ui:Button name="title-sound" text="音效 开" class="button" focusable="false" />
         </ui:VisualElement>
         <ui:Label name="title-guide" text="开局先免费部署主角和随从。出牌推动倒计时，主角倒下即失败。Tab 查看行动顺序，B 查看牌组，空格换牌。" class="title-guide" />
       </ui:VisualElement>
     </ui:VisualElement>
-    <ui:VisualElement name="battle-hud" class="battle-hud">
+    <ui:VisualElement name="battle-hud" class="battle-hud" style="display: none;">
       <ui:VisualElement class="top">
         <ui:VisualElement>
           <ui:Label name="location-title" class="title" />
@@ -43,7 +45,10 @@
           <ui:Label text="探险队" class="side-label crew-label" />
           <ui:Label text="拦路者" class="side-label enemy-label" />
         </ui:VisualElement>
-        <ui:VisualElement name="formations" class="formations" />
+        <ui:VisualElement name="formations" class="formations">
+          <ui:Instance name="upper-row" template="FormationRow" class="formation-row" />
+          <ui:Instance name="lower-row" template="FormationRow" class="formation-row" />
+        </ui:VisualElement>
         <ui:VisualElement class="notice-bar">
           <ui:Label name="notice" class="notice" />
           <ui:Label name="hint" class="hint" />
@@ -65,7 +70,9 @@
           <ui:VisualElement name="hand" class="hand" />
         </ui:ScrollView>
         <ui:VisualElement class="actions">
-          <ui:Button name="redraw" class="button primary redraw" />
+          <ui:Button name="redraw" class="button primary redraw">
+            <ui:VisualElement class="bell-icon" picking-mode="Ignore" />
+          </ui:Button>
           <ui:Label name="redraw-note" class="redraw-note" />
           <ui:Label name="junk-per-turn-note" class="redraw-note junk-per-turn-note" />
         </ui:VisualElement>

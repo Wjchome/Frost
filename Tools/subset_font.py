@@ -13,6 +13,8 @@ characters = set(range(0x20, 0x7f))
 for extension in ("*.cs", "*.uxml"):
     for path in assets.rglob(extension):
         characters.update(map(ord, path.read_text(encoding="utf-8-sig")))
+for path in (assets / "Resources" / "Config").rglob("*.asset"):
+    characters.update(map(ord, path.read_text(encoding="utf-8-sig")))
 
 font = instantiateVariableFont(TTFont(source), {"wght": 450}, inplace=True)
 for name_id, value in {

@@ -18,6 +18,7 @@ namespace Frostline
         private readonly Dictionary<VisualElement, (Action Click, Action Select)> draggable = new();
         private VisualElement screen, battleHud, formations, hand, overlay, dialog, choices;
         private VisualElement background, titleScreen;
+        private VisualTreeAsset unitCardFace, itemCardFace;
         private Label titleGuide;
         private Button titleSound, battleSound;
         private readonly Dictionary<string, AudioClip> audioClips = new();
@@ -61,20 +62,25 @@ namespace Frostline
         private void OnEnable()
         {
             Application.targetFrameRate = 60;
-            var root = GetComponent<UIDocument>().rootVisualElement;
-            root.Clear();
+            var document = GetComponent<UIDocument>();
+            if (document.visualTreeAsset == null)
+                document.visualTreeAsset = Resources.Load<VisualTreeAsset>("UI/Expedition");
+            var root = document.rootVisualElement;
             root.style.flexGrow = 1;
-            var tree = Resources.Load<VisualTreeAsset>("UI/Expedition").Instantiate();
-            tree.style.flexGrow = 1;
-            root.Add(tree);
+            if (screen != null && ReferenceEquals(screen, root.Q("screen")))
+            {
+                root.Clear();
+                document.visualTreeAsset.CloneTree(root);
+            }
             screen = root.Q("screen");
             battleHud = screen.Q("battle-hud");
-            screen.styleSheets.Add(Resources.Load<StyleSheet>("UI/ExpeditionLayout"));
-            screen.style.unityFontDefinition = FontDefinition.FromFont(Resources.Load<Font>("Fonts/FrostlineSans"));
+            unitCardFace = Resources.Load<VisualTreeAsset>("UI/UnitCardFace");
+            itemCardFace = Resources.Load<VisualTreeAsset>("UI/ItemCardFace");
             background = screen.Q("background");
             BindTitleScreen();
 
             formations = screen.Q("formations");
+            BindFormation();
             hand = screen.Q("hand");
             overlay = screen.Q("overlay");
             dialog = screen.Q("dialog");
@@ -110,9 +116,6 @@ namespace Frostline
                 confirmRestart = true;
                 RenderOverlay();
             };
-            var bellIcon = Element("bell-icon");
-            Paint(bellIcon, "CardArt/icon_bell");
-            redraw.Add(bellIcon);
             foreach (Button button in new[] { redraw, recall, restart, orderButton })
                 button.focusable = false;
             BindDeckView();
@@ -643,40 +646,60 @@ namespace Frostline
             forecastMarks.Add(mark);
         }
 
-        private void RenderFormation(bool planning)
+        private void BindFormation()
         {
             slots.Clear();
-            formations.Clear();
-            for (int row = 0; row < Expedition.Rows; row++)
-            {
-                var line = Element("formation");
-                var crew = Element("side");
-                crew.AddToClassList("allies");
-                var opposing = Element("side");
-                opposing.AddToClassList("enemies");
-                var midline = Element("midline");
-                midline.Add(Text(row == 0 ? "上排" : "下排", "row-label"));
-
-                for (int slot = Expedition.Slots - 1; slot >= 0; slot--)
-                    crew.Add(BuildSlot(new Position(false, row, slot), planning));
-                for (int slot = 0; slot < Expedition.Slots; slot++)
-                    opposing.Add(BuildSlot(new Position(true, row, slot), planning));
-                line.Add(crew);
-                line.Add(midline);
-                line.Add(opposing);
-                formations.Add(line);
-            }
+            BindRow(formations.Q("upper-row"), 0, "上排");
+            BindRow(formations.Q("lower-row"), 1, "下排");
         }
 
-        private Button BuildSlot(Position pos, bool planning)
+        private void BindRow(VisualElement rowView, int row, string label)
+        {
+            rowView.Q<Label>("row-label").text = label;
+            for (int position = Expedition.Slots - 1; position >= 0; position--)
+                BindSlot(rowView.Q<Button>($"ally-{position}"), new Position(false, row, position));
+            for (int position = 0; position < Expedition.Slots; position++)
+                BindSlot(rowView.Q<Button>($"enemy-{position}"), new Position(true, row, position));
+        }
+
+        private void BindSlot(Button slot, Position pos)
+        {
+            slots.Add(pos, slot);
+            slot.clicked += () => UseSlot(pos);
+            slot.RegisterCallback<PointerEnterEvent>(_ =>
+            {
+                if (game?.Phase == BattlePhase.Planning)
+                    HoverSlot(pos);
+            });
+            slot.RegisterCallback<PointerLeaveEvent>(_ =>
+            {
+                if (game?.Phase == BattlePhase.Planning && ghost == null && hoveredSlot.HasValue &&
+                    hoveredSlot.Value.Equals(pos))
+                    HoverSlot(null);
+            });
+        }
+
+        private void RenderFormation(bool planning)
+        {
+            foreach (var entry in slots)
+                RenderSlot(entry.Key, entry.Value, planning);
+        }
+
+        private void RenderSlot(Position pos, Button slot, bool planning)
         {
             Unit unit = game.At(pos);
-            Button slot = ButtonWith(null, () => UseSlot(pos), "slot");
             slot.EnableInClassList("empty", unit == null);
-            slot.EnableInClassList("hostile", pos.Enemy);
+            slot.EnableInClassList("unit-face", unit != null);
             slot.EnableInClassList("leader", unit?.Leader == true);
             slot.EnableInClassList("frozen", unit?.Frozen > 0);
-            slots.Add(pos, slot);
+            slot.RemoveFromClassList("source");
+            slot.RemoveFromClassList("incoming");
+            slot.RemoveFromClassList("motion-source");
+            slot.style.translate = StyleKeyword.Null;
+            slot.Q(className: "burst")?.RemoveFromHierarchy();
+            var emptyMark = slot.Q(className: "empty-mark");
+            if (emptyMark != null)
+                emptyMark.style.display = unit == null ? DisplayStyle.Flex : DisplayStyle.None;
 
             if (unit != null)
             {
@@ -686,17 +709,7 @@ namespace Frostline
             }
             else
             {
-                slot.Add(Text("＋", "empty-mark"));
-            }
-
-            if (planning)
-            {
-                slot.RegisterCallback<PointerEnterEvent>(_ => HoverSlot(pos));
-                slot.RegisterCallback<PointerLeaveEvent>(_ =>
-                {
-                    if (ghost == null && hoveredSlot.HasValue && hoveredSlot.Value.Equals(pos))
-                        HoverSlot(null);
-                });
+                slot.Q(className: "unit-content")?.RemoveFromHierarchy();
             }
 
             if (beat.HasValue)
@@ -727,7 +740,6 @@ namespace Frostline
                     break;
                 }
             }
-            return slot;
         }
 
         private void RenderHand(bool planning)
@@ -1503,34 +1515,44 @@ namespace Frostline
             }
 
             view.AddToClassList("item-card");
-            AddCardArt(view, card);
-            view.Add(Text(card.Name, "face-title"));
-            var description = Text(card.Description, "card-desc");
+            itemCardFace.CloneTree(view);
+            var art = view.Q("item-portrait");
+            Paint(art, card.Art);
+            AddItemEffectBadge(art, card);
+            view.Q<Label>("item-name").text = card.Name;
+            var description = view.Q<Label>("item-description");
+            description.text = card.Description;
             description.EnableInClassList("card-desc-long", card.Action == CardAction.Technique || card.Action == CardAction.Copy);
-            view.Add(description);
             if (card.HasAttack)
-                AddStat(view, "attack", (card.Damage + extraAttack).ToString(), "attack-corner");
+                art.Add(Stat("attack", (card.Damage + extraAttack).ToString(), "attack-corner"));
+            var secondary = view.Q("item-secondary");
             switch (card.Action)
             {
-                case CardAction.Freeze: AddStat(view, "snow", card.Amount.ToString(), "bottom-badge"); break;
-                case CardAction.Heal: AddStat(view, "heal", card.Amount.ToString(), "bottom-badge"); break;
-                case CardAction.Hasten: AddStat(view, "timer", card.Amount.ToString(), "bottom-badge"); break;
+                case CardAction.Freeze: secondary.Add(Stat("snow", card.Amount.ToString(), "rule-badge")); break;
+                case CardAction.Heal: secondary.Add(Stat("heal", card.Amount.ToString(), "rule-badge")); break;
+                case CardAction.Hasten: secondary.Add(Stat("timer", card.Amount.ToString(), "rule-badge")); break;
                 case CardAction.Strike when card.BonusDamage > 0:
-                    AddStat(view, EffectIcon(card.BonusAgainst), $"+{card.BonusDamage}", "bottom-badge");
+                    secondary.Add(Stat(EffectIcon(card.BonusAgainst), $"+{card.BonusDamage}", "rule-badge"));
                     break;
             }
+            secondary.style.display = secondary.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private VisualElement AddCardArt(VisualElement view, Card card)
         {
             var art = AddPortrait(view, card.Art);
+            AddItemEffectBadge(art, card);
+            return art;
+        }
+
+        private void AddItemEffectBadge(VisualElement art, Card card)
+        {
             if (card.Action == CardAction.ApplyEffect)
             {
                 var badge = Stat(EffectIcon(card.Effect), $"+{card.Amount}", "item-effect-badge");
                 badge.AddToClassList(EffectClass(card.Effect));
                 art.Add(badge);
             }
-            return art;
         }
 
         private static Unit DeploymentPreview(Card card, bool leader) => card.PreviewDeployment(leader);
@@ -1539,17 +1561,17 @@ namespace Frostline
         {
             UnitType type = unit.Type;
             view.AddToClassList("unit-face");
-            var vitals = Element("unit-vitals");
-            var health = Element("health-track");
-            var fill = Element("health-fill");
+            if (view.Q(className: "unit-content") == null)
+                unitCardFace.CloneTree(view);
+            var fill = view.Q("unit-health-fill");
             fill.style.width = Length.Percent(unit.Health * 100f / unit.MaxHealth);
-            health.Add(fill);
-            health.Add(Text($"{unit.Health}/{unit.MaxHealth}", "health-value"));
-            vitals.Add(health);
-            vitals.Add(Stat("attack", unit.Attack.ToString(), "vital-number"));
-            view.Add(vitals);
+            view.Q<Label>("unit-health").text = $"{unit.Health}/{unit.MaxHealth}";
+            view.Q<Label>("unit-attack").text = unit.Attack.ToString();
+            view.Q("unit-counter").style.display = unit.Period > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            view.Q<Label>("unit-counter-value").text = unit.Counter.ToString();
 
-            var statuses = Element("effect-strip");
+            var statuses = view.Q("unit-effects");
+            statuses.Clear();
             if (unit.Leader || crowned)
                 statuses.Add(Stat("crown", null, "effect-chip"));
             if (unit.Pendant != Pendant.None)
@@ -1565,37 +1587,36 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns + unit.AuraThorns);
             AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
             AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
-            if (statuses.childCount > 0)
-            {
-                statuses.EnableInClassList("dense", statuses.childCount > 10);
-                view.Add(statuses);
-            }
+            statuses.style.display = statuses.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            statuses.EnableInClassList("dense", statuses.childCount > 10);
 
-            AddPortrait(view, type.Art);
-            view.Add(Text(type.Name, "face-title"));
-            var traits = Element("traits");
-            if (unit.Pattern != AttackPattern.Front || type.ResistSnow || unit.Frenzy > 1)
+            Paint(view.Q("unit-portrait"), type.Art);
+            view.Q<Label>("unit-name").text = type.Name;
+            var tags = view.Q("unit-tags");
+            tags.Clear();
+            if (unit.Pattern != AttackPattern.Front)
+                tags.Add(Text(Expedition.PatternName(unit.Pattern), "trait"));
+            if (type.ResistSnow)
+                tags.Add(Icon("snow", "resist-icon"));
+            if (unit.Frenzy > 1)
+                tags.Add(Text($"狂热 ×{unit.Frenzy}", "trait"));
+            bool hasAbility = type.Ability.Effect != EffectKind.None;
+            var skill = view.Q("unit-ability");
+            skill.style.display = hasAbility ? DisplayStyle.Flex : DisplayStyle.None;
+            view.Q("unit-traits").style.display = tags.childCount > 0 || hasAbility ? DisplayStyle.Flex : DisplayStyle.None;
+            if (hasAbility)
             {
-                var tags = Element("trait-row");
-                if (unit.Pattern != AttackPattern.Front)
-                    tags.Add(Text(Expedition.PatternName(unit.Pattern), "trait"));
-                if (type.ResistSnow)
-                    tags.Add(Icon("snow", "resist-icon"));
-                if (unit.Frenzy > 1)
-                    tags.Add(Text($"狂热 ×{unit.Frenzy}", "trait"));
-                traits.Add(tags);
-            }
-            if (type.Ability.Effect != EffectKind.None)
-            {
-                var skill = Element("ability-value");
-                skill.Add(Text(type.Ability.Timing, "ability-trigger"));
-                skill.Add(Icon(EffectIcon(type.Ability.Effect), "ability-icon"));
-                skill.Add(Text(type.Ability.Effect == EffectKind.JunkPower ? "" : $"+{type.Ability.Amount + unit.AbilityBonus}", "ability-amount"));
+                view.Q<Label>("unit-trigger").text = type.Ability.Timing;
+                Paint(view.Q("unit-ability-icon"), $"CardArt/icon_{EffectIcon(type.Ability.Effect)}");
+                string value = type.Ability.Effect switch
+                {
+                    EffectKind.JunkPower or EffectKind.Retaliate => "",
+                    EffectKind.AttackDown => $"−{type.Ability.Amount + unit.AbilityBonus}",
+                    _ => $"+{type.Ability.Amount + unit.AbilityBonus}"
+                };
+                view.Q<Label>("unit-ability-amount").text = value;
                 skill.EnableInClassList("silenced", unit.Ink > 0);
-                traits.Add(skill);
             }
-            view.Add(traits);
-            AddStat(view, "timer", unit.Counter.ToString(), "unit-counter");
         }
 
         private static string EffectClass(EffectKind effect) => effect switch
@@ -1617,6 +1638,7 @@ namespace Frostline
             EffectKind.Snow => "snow",
             EffectKind.Shell => "shell",
             EffectKind.Spice => "spice",
+            EffectKind.TeamSpice => "spice",
             EffectKind.Overload => "overload",
             EffectKind.Ink => "ink",
             EffectKind.Weakness => "weakness",
@@ -1624,6 +1646,10 @@ namespace Frostline
             EffectKind.Thorns => "barbs",
             EffectKind.Burn => "burn",
             EffectKind.AttackGrowth => "attack",
+            EffectKind.AttackUp => "attack",
+            EffectKind.AttackDown => "attack",
+            EffectKind.Retaliate => "barbs",
+            EffectKind.StickyFruit => "heal",
             EffectKind.Exposed => "exposed",
             EffectKind.HealthGrowth => "health",
             _ => "bonus"
@@ -1656,9 +1682,6 @@ namespace Frostline
             return icon;
         }
 
-        private void AddStat(VisualElement view, string type, string value, string location) =>
-            view.Add(Stat(type, value, location));
-
         private VisualElement Stat(string type, string value, string location)
         {
             var stat = Element("stat");
@@ -1672,6 +1695,11 @@ namespace Frostline
 
         private void Paint(VisualElement target, string name)
         {
+            if (string.IsNullOrEmpty(name))
+            {
+                target.style.backgroundImage = new StyleBackground(StyleKeyword.None);
+                return;
+            }
             if (!textures.TryGetValue(name, out var texture))
             {
                 texture = Resources.Load<Texture2D>(name);

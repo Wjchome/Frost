@@ -14,7 +14,7 @@ namespace Frostline
         [Header("单位")]
         [Min(0)] public int power;
         [Min(1)] public int health = 1;
-        [Min(1)] public int period = 3;
+        [Min(0)] public int period = 3;
         [Min(1)] public int frenzy = 1;
         public AttackPattern pattern;
         public bool resistSnow;

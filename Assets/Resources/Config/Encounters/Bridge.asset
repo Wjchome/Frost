@@ -14,23 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "霜桥关口"
   landscape: {fileID: 2800000, guid: 8e83ea12a6824d18b7c606391d1e605d, type: 3}
-  briefing: "增援来得更快，霜桥守机横扫施加过载。"
+  briefing: "辣女巫受击给全队辣椒，麻可可每次行动提高攻击。"
   reinforcementInterval: 3
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: ee11e1f53f165be98f8489d9cbb21ea8, type: 2}
+    - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+    - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
+      row: 1
+  - enemies:
+    - unit: {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: b3b2f815e50b51c897f9639c422338e8, type: 2}
+    - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ee11e1f53f165be98f8489d9cbb21ea8, type: 2}
-      row: 2
-  - enemies:
-    - unit: {fileID: 11400000, guid: 911d1354924d5604ad548f83122c65f7, type: 2}
-      row: 1
-    - unit: {fileID: 11400000, guid: d5b939dc11e150aa8199fbdf9d336866, type: 2}
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
       row: 2
   pendantReward: 3
   rewardCards:
