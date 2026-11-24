@@ -8,6 +8,11 @@ namespace Frostline
     {
         public override void OnInspectorGUI()
         {
+            EditorGUILayout.HelpBox("运行时按这个资产的名称查找 Excel 中的卡牌 ID。卡牌数据请在 CardWorkbook.xlsx 里编辑。",
+                MessageType.Info);
+            if (GUILayout.Button("在 Project 中定位卡牌配置表"))
+                EditorGUIUtility.PingObject(AssetDatabase.LoadMainAssetAtPath("Assets/Resources/Config/CardWorkbook.xlsx"));
+            using var legacy = new EditorGUI.DisabledScope(true);
             serializedObject.Update();
             Draw("displayName", "卡名");
             Draw("portrait", "插画");
@@ -25,6 +30,9 @@ namespace Frostline
                 Draw("trigger", "能力触发时机");
                 Draw("abilityEffect", "能力效果");
                 Draw("abilityAmount", "能力数值");
+                var effect = (EffectKind)serializedObject.FindProperty("abilityEffect").enumValueIndex;
+                if (effect is EffectKind.MaxCountdownUp or EffectKind.HurtForFrenzy)
+                    Draw("abilitySecondaryAmount", "第二效果数值");
             }
             else if (action == CardAction.ApplyEffect)
             {

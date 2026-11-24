@@ -21,6 +21,7 @@ namespace Frostline
         public EffectTrigger trigger;
         public EffectKind abilityEffect;
         [Min(0)] public int abilityAmount;
+        [Min(0)] public int abilitySecondaryAmount;
 
         [Header("道具")]
         public EffectKind effect;

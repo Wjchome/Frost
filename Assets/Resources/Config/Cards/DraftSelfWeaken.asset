@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df6257a678b45c1da73bd2763461c436, type: 3}
+  m_Name: DraftSelfWeaken
+  m_EditorClassIdentifier:
+  displayName: "自虚弱者"
+  catalogGroup: "通用"
+  portrait: {fileID: 2800000, guid: e64c81c116c6fed459872f8aad12d0a1, type: 3}
+  action: 0
+  health: 4
+  power: 6
+  period: 2
+  frenzy: 1
+  pattern: 0
+  trigger: 4
+  abilityEffect: 41
+  abilityAmount: 1
+  abilitySecondaryAmount: 0

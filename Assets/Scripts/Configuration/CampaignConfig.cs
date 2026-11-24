@@ -42,32 +42,17 @@ namespace Frostline
 
         public DispatchRoute CreateRoute(IDictionary<string, Texture2D> textures)
         {
-            var cards = new Dictionary<CardConfig, Card>();
+            CardWorkbook workbook = CardWorkbook.Load();
+            var additions = workbook.Additional.ToArray();
 
-            Card ReadCard(CardConfig data)
+            CardWorkbook.Entry ReadEntry(CardConfig data)
             {
                 if (data == null)
                     throw new InvalidOperationException("A card reference is missing from the expedition configuration.");
-                if (cards.TryGetValue(data, out Card cached))
-                    return cached;
-
-                string art = RegisterTexture(data.portrait, textures);
-                Card card;
-                if (data.action == CardAction.Deploy)
-                {
-                    bool reactionOnly = data.period == 0 && data.trigger == EffectTrigger.WhenHit && data.abilityEffect == EffectKind.Retaliate;
-                    if (data.health < 1 || data.frenzy < 1 || (data.period < 1 && !reactionOnly))
-                        throw new InvalidOperationException($"{data.name} needs valid health, countdown and attack count.");
-                    var unit = new UnitType(data.displayName, art, data.power, data.health, data.period, data.pattern,
-                        data.frenzy, new UnitAbility(data.trigger, data.abilityEffect, data.abilityAmount), data.resistSnow);
-                    card = new Card(unit);
-                }
-                else
-                    card = new Card(data.displayName, art, data.action, data.amount, data.damage, data.effect,
-                        data.targetsEnemy, data.bonusAgainst, data.bonusDamage, data.technique);
-                cards.Add(data, card);
-                return card;
+                return workbook.Get(data.name);
             }
+
+            Card ReadCard(CardConfig data) => ReadEntry(data).Card;
 
             UnitType ReadUnit(CardConfig data)
             {
@@ -116,7 +101,16 @@ namespace Frostline
                 return result;
             }
 
-            var shared = ReadRecruits(sharedRecruits);
+            var extraRewards = additions.Where(entry => entry.Placement == "战后奖励").ToArray();
+            foreach (var entry in extraRewards)
+                if (entry.Group != "通用" && !factions.Any(faction => faction != null && faction.displayName == entry.Group))
+                    throw entry.Source.Error($"奖励分类「{entry.Group}」须为通用或当前部族名称。");
+
+            IEnumerable<Card> ExtraPool(string group, bool recruits) => extraRewards
+                .Where(entry => entry.Group == group && (entry.Card.Unit != null) == recruits)
+                .Select(entry => entry.Card);
+
+            var shared = ReadRecruits(sharedRecruits).Concat(ExtraPool("通用", true)).Distinct().ToArray();
             bool hasRecruitment = routeStages.Take(routeStages.Length - 1).Any(stage => stage.RecruitCompanions);
             if (hasRecruitment && shared.Length == 0)
                 throw new InvalidOperationException("Recruitment requires a shared companion.");
@@ -126,7 +120,8 @@ namespace Frostline
                 if (config == null)
                     throw new InvalidOperationException("A faction reference is missing.");
                 var leaders = config.leaders.Select(ReadUnit).Distinct().ToArray();
-                var recruits = ReadRecruits(config.exclusiveRecruits);
+                var recruits = ReadRecruits(config.exclusiveRecruits)
+                    .Concat(ExtraPool(config.displayName, true)).Distinct().ToArray();
                 if (leaders.Length < 3 || config.startingDeck.Length == 0 ||
                     (hasRecruitment && recruits.Length < 2))
                     throw new InvalidOperationException($"{config.name} needs three leaders, a deck and two exclusive recruits for recruitment.");
@@ -135,12 +130,14 @@ namespace Frostline
                 return new ExpeditionFaction(config.displayName, config.strategy, leaders,
                     config.startingDeck.Select(ReadCard).ToArray(), config.startingSupplies.Select(ReadCard).ToArray(),
                     recruits, ReadCard(config.signatureReward), config.openingCompanions.Select(ReadUnit).ToArray(),
-                    config.itemRewards.Select(ReadCard).ToArray());
+                    config.itemRewards.Select(ReadCard).Concat(ExtraPool(config.displayName, false)).Distinct().ToArray());
             }).ToArray();
 
             return new DispatchRoute(Array.Empty<StartingLoadout>(), startingCompanions, routeStages, routeFactions, shared,
-                catalog: catalogCards.Select(value => (value.catalogGroup, ReadCard(value))).ToArray(),
-                sharedItems: sharedItems.Select(ReadCard).ToArray(), junk: junkCard == null ? null : ReadCard(junkCard),
+                catalog: catalogCards.Select(ReadEntry).Concat(additions)
+                    .Select(entry => (entry.Group, entry.Card)).Distinct().ToArray(),
+                sharedItems: sharedItems.Select(ReadCard).Concat(ExtraPool("通用", false)).Distinct().ToArray(),
+                junk: junkCard == null ? null : ReadCard(junkCard),
                 fruit: stickyFruit == null ? null : ReadCard(stickyFruit));
         }
 

@@ -183,6 +183,8 @@
 .effect-bonus { background-color: #2f644c; }
 .effect-thorns { background-color: #635338; }
 .effect-burn { background-color: #934b2e; }
+.effect-poison { background-color: #3c633c; border-color: #a9d68d; }
+.effect-corruption { background-color: #66384c; border-color: #edacb6; }
 .effect-exposed { background-color: #744552; }
 .order-note {
     visibility: hidden; align-self: center; min-width: 235px; max-width: 80%;

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DraftJunkfolk
   m_EditorClassIdentifier:
   displayName: "垃圾人"
-  strategy: "生成垃圾，用来支付道具的费用或强化攻击。"
+  strategy: "循环生成和摧毁垃圾，再用狂热多次攻击。"
   leaders:
   - {fileID: 11400000, guid: ca51031f2f3d59c385b20eb84f50ecec, type: 2}
   - {fileID: 11400000, guid: 3eda7bafa0e55c449aaa41ac62e1b376, type: 2}
@@ -32,7 +32,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8053aa75105b52dea758159e981019f4, type: 2}
   - {fileID: 11400000, guid: 46d06dc1ead0534ab11a88967316b910, type: 2}
   - {fileID: 11400000, guid: d572030aa117523692596bd9ea3346b6, type: 2}
-  - {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
+  - {fileID: 11400000, guid: f4a6a546e7054db895346fa80a39e052, type: 2}
   startingSupplies: []
   exclusiveRecruits:
   - {fileID: 11400000, guid: b98e5876c4dd579097c634881107db16, type: 2}
@@ -41,11 +41,21 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a0afba0a74bd58e88f2e728b062d8cff, type: 2}
   - {fileID: 11400000, guid: 116e6d35e22a5364b9cfd974aad63687, type: 2}
   - {fileID: 11400000, guid: d27679ec456f520587892bc7a01dccd6, type: 2}
+  - {fileID: 11400000, guid: b1224e3d5dc74217bee4749bfca70354, type: 2}
+  - {fileID: 11400000, guid: 4f4a3d69622b4fc295cb8610b9495342, type: 2}
+  - {fileID: 11400000, guid: f5d206042b214f03b7ae06358cda5885, type: 2}
+  - {fileID: 11400000, guid: 787982c5ea7e40a580175b83e58f5659, type: 2}
   itemRewards:
   - {fileID: 11400000, guid: 1c769e645fd159929efc8d0ff41bea96, type: 2}
   - {fileID: 11400000, guid: a43639c398115f54bff14bec9226202a, type: 2}
   - {fileID: 11400000, guid: 6aa239b1bc0c59f2907ee23162f21236, type: 2}
   - {fileID: 11400000, guid: 666caa75e96b5b088ea4659647e4883d, type: 2}
   - {fileID: 11400000, guid: 7bc09f90307057b08567b787693581d1, type: 2}
-  - {fileID: 11400000, guid: f4a6a546e7054db895346fa80a39e052, type: 2}
+  - {fileID: 11400000, guid: 695d9f84a48a44f996e8b0557294c530, type: 2}
+  - {fileID: 11400000, guid: 80d580a1acfc410a9a0dc0af3cb6fe97, type: 2}
+  - {fileID: 11400000, guid: 34e02cc7f60843399184db0757cb91f3, type: 2}
+  - {fileID: 11400000, guid: 715d2c8ac3954032801c5921a6ee8fa9, type: 2}
+  - {fileID: 11400000, guid: d0b76d9221804bbd9c2110a809541939, type: 2}
+  - {fileID: 11400000, guid: 0aa710a2ba554afdaec300cd52ccc032, type: 2}
+  - {fileID: 11400000, guid: f407e732e4a9471fbd11587f19eb080f, type: 2}
   signatureReward: {fileID: 11400000, guid: 1c769e645fd159929efc8d0ff41bea96, type: 2}

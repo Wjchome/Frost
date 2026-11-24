@@ -643,8 +643,22 @@ namespace Frostline
                 (label, style) = ($"护壳 {unit.Shell} → {result.Shell}", "forecast-effect");
             else if (result.Snow != unit.Frozen)
                 (label, style) = ($"雪球 {unit.Frozen} → {result.Snow}", "forecast-effect");
+            else if (result.Poison != unit.Poison)
+                (label, style) = ($"中毒 {unit.Poison} → {result.Poison}", "forecast-effect");
+            else if (result.Corruption != unit.Corruption)
+                (label, style) = ($"腐化 {unit.Corruption} → {result.Corruption}", "forecast-effect");
+            else if (result.Period != unit.Period)
+                (label, style) = ($"最大倒计时 {unit.Period} → {result.Period}", "forecast-effect");
+            else if (result.MaxHealth != unit.MaxHealth)
+                (label, style) = ($"最大生命 {unit.MaxHealth} → {result.MaxHealth}", "forecast-effect");
             else if (result.Attack != unit.Attack)
                 (label, style) = ($"攻击 {unit.Attack} → {result.Attack}", "forecast-effect");
+            else if (result.Frenzy != unit.Frenzy)
+                (label, style) = ($"狂热 {unit.Frenzy} → {result.Frenzy}", "forecast-effect");
+            else if (result.AbilityBonus != unit.AbilityBonus)
+                (label, style) = ($"效果 {unit.AbilityBonus} → {result.AbilityBonus}", "forecast-effect");
+            else if (result.Counter != unit.Counter && result.Counter != Math.Max(0, unit.Counter - 1))
+                (label, style) = ($"倒计时 {unit.Counter} → {result.Counter}", "forecast-effect");
             else if (!result.Origin.Equals(result.Destination.Value))
                 (label, style) = ("预计换排", "forecast-effect");
             else
@@ -826,6 +840,8 @@ namespace Frostline
             {
                 foreach (Position pos in game.CardTargets(cardIndex, hoveredSlot.Value))
                     affected.Add(pos);
+                randomTarget = affected.Count > 0 && game.Hand[cardIndex].Technique?.Target is
+                    CardTarget.RandomAlly or CardTarget.RandomEnemy;
                 if (affected.Count > 0 && game.Hand[cardIndex].Action == CardAction.Hasten &&
                     current.Counter <= game.Hand[cardIndex].Amount)
                 {
@@ -882,18 +898,23 @@ namespace Frostline
             ApplyOrder();
         }
 
-        private static string CardDetails(Card card, Unit target = null)
+        private string CardDetails(Card card, Unit target = null)
         {
             if (card.Unit != null)
                 return card.Description + UnitDetails(DeploymentPreview(card, leader: false));
             string preview = "";
-            if (target != null && card.Damage > 0 && (card.BonusDamage > 0 || target.Exposed > 0))
+            if (target != null && card.HasAttack && (card.BonusDamage > 0 || target.Exposed > 0 || target.Corruption > 0))
             {
-                int damage = target.Block > 0 ? 0 : card.DamageAgainst(target) + target.Exposed;
+                int hit = game?.PreviewCardDamage(card, target) ?? card.DamageAgainst(target);
+                int damage = Expedition.PreviewHealthDamage(target, hit);
                 preview = $" 本次伤害 {damage}。";
             }
-            return card.Description + Effects.Rule(card.Effect) + preview;
+            return DescribeCard(card, game != null && game.Hand.Contains(card) ? game : null) + Effects.Rule(card.Effect) + preview;
         }
+
+        private static string DescribeCard(Card card, Expedition battle) =>
+            card.Describe(card.IsJunk ? battle?.JunkAttackBonus ?? 0 : 0,
+                battle?.Hand.Count(item => item.IsJunk));
 
         private static string UnitDetails(Unit unit)
         {
@@ -904,7 +925,7 @@ namespace Frostline
             if (type.Pattern == AttackPattern.Support)
                 pattern += "（倒计时归零，给予同排最前方的其他友军）";
             string frenzy = unit.Frenzy > 1 ? $" · 狂热 ×{unit.Frenzy}" : "";
-            string ability = type.Ability.Effect == EffectKind.None ? "" : " · " + type.Ability.Describe(unit.AbilityBonus);
+            string ability = type.Ability.Effect == EffectKind.None ? "" : " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack);
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
             string ink = unit.Ink > 0 ? $" · 墨水 {unit.Ink}（触发能力停用）" : "";
             string overload = unit.Overload > 0 ? $" · 过载 {unit.Overload}/{unit.Health}，达到生命时引爆" : "";
@@ -915,6 +936,8 @@ namespace Frostline
                 (unit.Shell > 0 ? $" · 护壳 {unit.Shell}" : "") +
                 (unit.Thorns > 0 ? $" · 反伤 {unit.Thorns}" : "") +
                 (unit.Burn > 0 ? $" · 灼烧 {unit.Burn}" : "") +
+                (unit.Poison > 0 ? $" · 中毒 {unit.Poison}" : "") +
+                (unit.Corruption > 0 ? $" · 腐化 {unit.Corruption}（受伤翻倍）" : "") +
                 (unit.Exposed > 0 ? $" · 易伤 {unit.Exposed}" : "") +
                 (unit.EffectBonus > 0 ? $" · 效果 +{unit.EffectBonus}" : "");
             string pendant = unit.Pendant != Pendant.None
@@ -1585,9 +1608,9 @@ namespace Frostline
         }
 
         private void DrawHandFace(VisualElement view, Card card) =>
-            DrawCardFace(view, card, game.IsCaptainCard(card), game.Opening, card.IsJunk ? game.JunkAttackBonus : 0);
+            DrawCardFace(view, card, game.IsCaptainCard(card), game.Opening, game);
 
-        private void DrawCardFace(VisualElement view, Card card, bool leader, bool crowned, int extraAttack = 0)
+        private void DrawCardFace(VisualElement view, Card card, bool leader, bool crowned, Expedition battle = null)
         {
             if (card.Unit != null)
             {
@@ -1602,10 +1625,10 @@ namespace Frostline
             AddItemEffectBadge(art, card);
             view.Q<Label>("item-name").text = card.Name;
             var description = view.Q<Label>("item-description");
-            description.text = card.Description;
+            description.text = DescribeCard(card, battle);
             description.EnableInClassList("card-desc-long", card.Action == CardAction.Technique || card.Action == CardAction.Copy);
-            if (card.HasAttack)
-                art.Add(Stat("attack", (card.Damage + extraAttack).ToString(), "attack-corner"));
+            if (card.HasAttack && (card.Technique?.JunkAction != JunkOperation.DoubleAndStrike || battle != null))
+                art.Add(Stat("attack", (battle?.PreviewCardDamage(card) ?? card.Damage).ToString(), "attack-corner"));
             var secondary = view.Q("item-secondary");
             switch (card.Action)
             {
@@ -1628,7 +1651,7 @@ namespace Frostline
 
         private void AddItemEffectBadge(VisualElement art, Card card)
         {
-            if (card.Action == CardAction.ApplyEffect)
+            if (card.Action == CardAction.ApplyEffect || card.Effect is EffectKind.Poison or EffectKind.Corruption)
             {
                 var badge = Stat(EffectIcon(card.Effect), $"+{card.Amount}", "item-effect-badge");
                 badge.AddToClassList(EffectClass(card.Effect));
@@ -1665,8 +1688,10 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.Weakness, unit.Weakness);
             AddEffectBadge(statuses, EffectKind.Block, unit.Block);
             AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
-            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns + unit.AuraThorns);
+            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns);
             AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
+            AddEffectBadge(statuses, EffectKind.Poison, unit.Poison);
+            AddEffectBadge(statuses, EffectKind.Corruption, unit.Corruption);
             AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
             statuses.style.display = statuses.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             statuses.EnableInClassList("dense", statuses.childCount > 10);
@@ -1691,11 +1716,26 @@ namespace Frostline
                 Paint(view.Q("unit-ability-icon"), $"CardArt/icon_{EffectIcon(type.Ability.Effect)}");
                 string value = type.Ability.Effect switch
                 {
-                    EffectKind.JunkPower or EffectKind.Retaliate => "",
+                    EffectKind.JunkPower => $"+{unit.Attack}",
+                    EffectKind.Retaliate => "",
+                    EffectKind.SelfAttack => $"自身 {unit.Attack}",
+                    EffectKind.DamageVsLowerHealth => $"×{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.HurtForFrenzy => $"生命 −{type.Ability.Amount + unit.AbilityBonus} / 狂热 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.MaxCountdownUp => $"计数 +{type.Ability.Amount + unit.AbilityBonus} / 攻击 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
                     EffectKind.AttackDown => $"−{type.Ability.Amount + unit.AbilityBonus}",
                     _ => $"+{type.Ability.Amount + unit.AbilityBonus}"
                 };
                 view.Q<Label>("unit-ability-amount").text = value;
+                if (type.Ability.Effect == EffectKind.SnowOnBlock)
+                    view.Q<Label>("unit-trigger").text = "行动 / 格挡";
+                if (type.Ability.Effect == EffectKind.DamageVsLowerHealth)
+                    view.Q<Label>("unit-trigger").text = "目标血量更低";
+                else if (type.Ability.Trigger == EffectTrigger.Attack)
+                    view.Q<Label>("unit-trigger").text = "攻击后";
+                if (type.Ability.Trigger == EffectTrigger.TurnEnd)
+                    view.Q<Label>("unit-trigger").text = "回合末";
+                if (type.Ability.Trigger == EffectTrigger.WhileWounded)
+                    view.Q<Label>("unit-trigger").text = "回合末受伤";
                 skill.EnableInClassList("silenced", unit.Ink > 0);
             }
         }
@@ -1709,6 +1749,8 @@ namespace Frostline
             EffectKind.Block => "effect-block",
             EffectKind.Thorns => "effect-thorns",
             EffectKind.Burn => "effect-burn",
+            EffectKind.Poison => "effect-poison",
+            EffectKind.Corruption => "effect-corruption",
             EffectKind.Exposed => "effect-exposed",
             _ => "effect-bonus"
         };
@@ -1731,6 +1773,14 @@ namespace Frostline
             EffectKind.AttackDown => "attack",
             EffectKind.Retaliate => "barbs",
             EffectKind.StickyFruit => "heal",
+            EffectKind.SnowOnBlock => "snow",
+            EffectKind.Poison => "poison",
+            EffectKind.Corruption => "corruption",
+            EffectKind.MaxCountdownUp or EffectKind.ExtraAllyTick => "timer",
+            EffectKind.TeamHealth or EffectKind.AbsorbRow => "health",
+            EffectKind.HurtForFrenzy or EffectKind.Frenzy => "bonus",
+            EffectKind.WeakenRow => "weakness",
+            EffectKind.SelfAttack or EffectKind.DamageVsLowerHealth => "attack",
             EffectKind.Exposed => "exposed",
             EffectKind.HealthGrowth => "health",
             _ => "bonus"

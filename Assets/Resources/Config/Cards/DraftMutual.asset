@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df6257a678b45c1da73bd2763461c436, type: 3}
+  m_Name: DraftMutual
+  m_EditorClassIdentifier:
+  displayName: "同归者"
+  catalogGroup: "垃圾人"
+  portrait: {fileID: 2800000, guid: c4dd2893c166eee45a8c42b7288b9a38, type: 3}
+  action: 0
+  health: 17
+  power: 4
+  period: 4
+  frenzy: 1
+  pattern: 0
+  trigger: 12
+  abilityEffect: 39
+  abilityAmount: 0
+  abilitySecondaryAmount: 0

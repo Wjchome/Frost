@@ -16,9 +16,9 @@ MonoBehaviour:
   catalogGroup: "垃圾人"
   portrait: {fileID: 2800000, guid: 4886408b4f99b0e4591812f3ebec6b26, type: 3}
   action: 0
-  health: 7
-  power: 3
-  period: 4
+  health: 5
+  power: 6
+  period: 5
   frenzy: 1
   trigger: 7
   abilityEffect: 22
