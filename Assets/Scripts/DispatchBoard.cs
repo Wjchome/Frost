@@ -10,7 +10,17 @@ namespace Frostline
     [RequireComponent(typeof(UIDocument), typeof(AudioSource))]
     public sealed class DispatchBoard : MonoBehaviour
     {
-        private enum DeckPage { Roster, Draw, Discard, Codex }
+        private enum DeckPage { Roster, Draw, Discard, Codex, GameMaster, Exhaust, GameMasterMenu, GameMasterEnemies }
+
+        // Add future GM tools here; the menu and navigation share these entries.
+        private static readonly (string Id, string Title, string Description, DeckPage Page)[] GameMasterTools =
+        {
+            ("gm-tool-hand", "加手牌", "选择卡牌，加入本场手牌。", DeckPage.GameMaster),
+            ("gm-tool-enemy", "加敌人伙伴", "选择单位和敌方空位，直接加入战场。", DeckPage.GameMasterEnemies)
+        };
+
+        private static readonly Card GameMasterTestEnemy = new(new UnitType("测试木桩",
+            "CardArt/Expedition/EnemyMountainWalnut", power: 1, health: 1000, period: 3));
 
         private readonly Dictionary<string, Texture2D> textures = new();
         private readonly Dictionary<Position, Button> slots = new();
@@ -24,15 +34,19 @@ namespace Frostline
         private readonly Dictionary<string, AudioClip> audioClips = new();
         private AudioSource audioSource;
         private bool showingTitle, showingGuide, soundEnabled;
-        private Label locationTitle, turn, wave, waveUnits, objective, notice, hint, drawCount, discardCount;
+        private Label locationTitle, turn, wave, waveUnits, objective, notice, hint, drawCount, discardCount, exhaustCount;
         private Label resultEyebrow, resultTitle, resultDetail, redrawNote, junkPerTurnNote;
         private Button redraw, recall, restart, orderButton, changeLoadout;
-        private Button inspectDeck, inspectDraw, inspectDiscard, routeDeck, rosterTab, drawTab, discardTab;
-        private VisualElement deckOverlay, deckGrid, deckDetail;
+        private Button inspectDeck, inspectDraw, inspectDiscard, inspectExhaust, routeDeck, rosterTab, drawTab, discardTab, exhaustTab;
+        private Button gmButton, gmAddCard, gmBack;
+        private VisualElement deckOverlay, deckGrid, deckDetail, gmMenu, gmEnemySlots;
+        private Position? gmEnemyPosition;
+        private readonly Dictionary<Position, Button> gmSlotButtons = new();
         private ScrollView deckScroll;
         private Label deckSummary;
         private DeckPage? deckPage;
         private Button selectedDeckTile;
+        private Card selectedDeckCard;
         private Label orderNote;
         private bool showOrder;
         private readonly List<VisualElement> forecastMarks = new();
@@ -226,9 +240,11 @@ namespace Frostline
 
         private void Update()
         {
-            if (deckPage == DeckPage.Codex)
+            if (deckPage == DeckPage.Codex || IsGameMasterPage)
             {
-                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.C))
+                if (Input.GetKeyDown(KeyCode.Escape) && IsGameMasterTool)
+                    ShowDeck(DeckPage.GameMasterMenu);
+                else if (Input.GetKeyDown(KeyCode.Escape) || (deckPage == DeckPage.Codex && Input.GetKeyDown(KeyCode.C)))
                     CloseDeck();
                 return;
             }
@@ -337,6 +353,8 @@ namespace Frostline
             if (game.Phase != BattlePhase.Planning || resolving != null || confirmRestart || deckPage.HasValue)
                 return;
 
+            TraceBattle(selectedCard >= 0 && selectedCard < game.Hand.Count
+                ? "出牌：" + game.Hand[selectedCard].Name : "开始结算");
             selectedCard = -1;
             selectedUnit = null;
             ClearDrag();
@@ -359,10 +377,24 @@ namespace Frostline
             }
 
             beat = null;
-            Render();
             // Always yield once so StartCoroutine has assigned its handle.
             yield return null;
             resolving = null;
+            TraceBattle("结算完成");
+            Render();
+        }
+
+        // Keep the preceding card and board state in the editor/player log when diagnosing a stalled sequence.
+        [System.Diagnostics.Conditional("UNITY_EDITOR"), System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+        private void TraceBattle(string action)
+        {
+            var state = new List<string>();
+            foreach (Position pos in slots.Keys)
+                if (game.At(pos) is Unit unit)
+                    state.Add($"{(pos.Enemy ? "敌" : "我")}{pos.Row + 1}/{pos.Slot + 1} {unit.Type.Name}" +
+                        $" 生命{unit.Health}/{unit.MaxHealth} 攻击{unit.Attack} 计数{unit.Counter}" +
+                        $" 雪球{unit.Frozen} 腐化{unit.Corruption} 格挡{unit.Block} 过载{unit.Overload}");
+            Debug.Log($"[Frostline Battle] {action} · 回合{game.Turn} 波次{game.Wave} {game.Phase}\n" + string.Join(" | ", state));
         }
 
         private IEnumerator PlayWindup(BattleBeat action)
@@ -503,6 +535,8 @@ namespace Frostline
                 return;
             selectedCard = toggle && selectedCard == index ? -1 : index;
             selectedUnit = null;
+            if (selectedCard >= 0 && game.Hand[selectedCard].Effect == EffectKind.Corruption)
+                TraceBattle("选中：" + game.Hand[selectedCard].Name);
             ApplyTargets();
         }
 
@@ -567,9 +601,12 @@ namespace Frostline
             notice.text = game.Notice;
             drawCount.text = game.DrawCount.ToString();
             discardCount.text = game.DiscardCount.ToString();
+            exhaustCount.text = game.ExhaustCount.ToString();
             inspectDeck.SetEnabled(planning);
             inspectDraw.SetEnabled(planning);
             inspectDiscard.SetEnabled(planning);
+            inspectExhaust.SetEnabled(planning);
+            gmButton.SetEnabled(CanOpenGameMaster);
             redraw.text = game.Refresh == 0 ? "免费换牌" : $"换牌  {game.Refresh}";
             redraw.SetEnabled(game.CanRedraw);
             redrawNote.text = game.Opening ? "开局部署后开启" : game.Refresh == 0 ? "空格敲铃" : "提前敲铃消耗一回合";
@@ -597,9 +634,12 @@ namespace Frostline
 
         private void ApplyOrder()
         {
-            bool canPreview = game.Phase == BattlePhase.Planning && !game.Opening && !deckPage.HasValue;
-            bool previewCard = canPreview && hoveredSlot.HasValue && game.CanPlay(selectedCard, hoveredSlot.Value);
-            bool visible = canPreview && (showOrder || previewCard);
+            bool planning = game.Phase == BattlePhase.Planning && !deckPage.HasValue;
+            bool canPreview = planning && !game.Opening;
+            bool validTarget = planning && hoveredSlot.HasValue && game.CanPlay(selectedCard, hoveredSlot.Value);
+            bool deployment = validTarget && game.Hand[selectedCard].Action == CardAction.Deploy;
+            bool previewCard = canPreview && validTarget;
+            bool visible = deployment || (canPreview && (showOrder || previewCard));
             orderButton.SetEnabled(canPreview);
             orderButton.EnableInClassList("order-active", showOrder && canPreview);
             orderButton.text = showOrder && canPreview ? "隐藏预览 [Tab]" : "行动预览 [Tab]";
@@ -607,9 +647,22 @@ namespace Frostline
             foreach (VisualElement mark in forecastMarks)
                 mark.RemoveFromHierarchy();
             forecastMarks.Clear();
+            foreach (Button slot in slots.Values)
+                slot.RemoveFromClassList("deployment-preview-slot");
 
             if (!visible)
                 return;
+            if (deployment)
+            {
+                Card card = game.Hand[selectedCard];
+                ShowDeploymentPreview(card, hoveredSlot.Value);
+                var deploymentForecast = game.PreviewTurn(selectedCard, hoveredSlot);
+                ShowTerrainForecast(deploymentForecast);
+                bool loses = deploymentForecast.Phase == BattlePhase.Lost;
+                orderNote.text = $"{card.Name} · 部署预览" + (loses ? " · 队长将倒下" : "");
+                orderNote.EnableInClassList("danger", loses);
+                return;
+            }
 
             var preview = game.PreviewTurn(selectedCard, previewCard ? hoveredSlot : null);
             orderNote.text = (previewCard ? $"{game.Hand[selectedCard].Name} · 出牌后预览" : "下一拍预览") +
@@ -623,6 +676,33 @@ namespace Frostline
                 AddForecastMark(slots[arrival.Position], Text($"增援 · {arrival.Unit.Name}", "arrival-badge"));
             foreach (UnitForecast result in preview.Units)
                 ShowUnitForecast(result);
+            ShowTerrainForecast(preview);
+        }
+
+        private void ShowTerrainForecast(TurnPreview preview)
+        {
+            foreach (var (position, tile) in preview.Terrain)
+            {
+                string description = tile.HasEffects ? tile.Describe() : "格子效果清空";
+                AddForecastMark(slots[position], Text(description, "terrain-chip", "terrain-preview"));
+            }
+        }
+
+        private void ShowDeploymentPreview(Card card, Position target)
+        {
+            foreach (var move in game.DeploymentMoves(target))
+                AddDeploymentFace(move.Destination, game.At(move.Source).Copy());
+            AddDeploymentFace(target, DeploymentPreview(card, game.IsCaptainCard(card)));
+        }
+
+        private void AddDeploymentFace(Position position, Unit unit)
+        {
+            Button slot = slots[position];
+            slot.AddToClassList("deployment-preview-slot");
+            VisualElement face = Element("deployment-preview-face");
+            unit.TerrainAttack = game.TerrainAttackAt(position, unit);
+            DrawUnitFace(face, unit);
+            AddForecastMark(slot, face);
         }
 
         private void ShowUnitForecast(UnitForecast result)
@@ -653,6 +733,10 @@ namespace Frostline
                 (label, style) = ($"最大生命 {unit.MaxHealth} → {result.MaxHealth}", "forecast-effect");
             else if (result.Attack != unit.Attack)
                 (label, style) = ($"攻击 {unit.Attack} → {result.Attack}", "forecast-effect");
+            else if (result.Thorns != unit.TotalThorns)
+                (label, style) = ($"反伤 {unit.TotalThorns} → {result.Thorns}", "forecast-effect");
+            else if (result.PermanentJunk != unit.PermanentJunk)
+                (label, style) = ($"永久垃圾 {unit.PermanentJunk} → {result.PermanentJunk}", "forecast-effect");
             else if (result.Frenzy != unit.Frenzy)
                 (label, style) = ($"狂热 {unit.Frenzy} → {result.Frenzy}", "forecast-effect");
             else if (result.AbilityBonus != unit.AbilityBonus)
@@ -660,7 +744,7 @@ namespace Frostline
             else if (result.Counter != unit.Counter && result.Counter != Math.Max(0, unit.Counter - 1))
                 (label, style) = ($"倒计时 {unit.Counter} → {result.Counter}", "forecast-effect");
             else if (!result.Origin.Equals(result.Destination.Value))
-                (label, style) = ("预计换排", "forecast-effect");
+                (label, style) = (result.Origin.Row == result.Destination.Value.Row ? "预计前移" : "预计换排", "forecast-effect");
             else
                 return;
 
@@ -726,6 +810,7 @@ namespace Frostline
             slot.RemoveFromClassList("motion-source");
             slot.style.translate = StyleKeyword.Null;
             slot.Q(className: "burst")?.RemoveFromHierarchy();
+            slot.Q(className: "terrain-current")?.RemoveFromHierarchy();
             var emptyMark = slot.Q(className: "empty-mark");
             if (emptyMark != null)
                 emptyMark.style.display = unit == null ? DisplayStyle.Flex : DisplayStyle.None;
@@ -740,6 +825,10 @@ namespace Frostline
             {
                 slot.Q(className: "unit-content")?.RemoveFromHierarchy();
             }
+
+            TerrainTile tile = game.TerrainAt(pos);
+            if (tile.HasEffects)
+                slot.Add(Text(tile.Describe(), "terrain-chip", "terrain-current"));
 
             if (beat.HasValue)
             {
@@ -892,9 +981,13 @@ namespace Frostline
             hint.text = game.Phase == BattlePhase.Resolving ? "结算中…" :
                 cardIndex >= 0 ? any ? CardDetails(game.Hand[cardIndex],
                     hoveredSlot.HasValue && game.CanPlay(cardIndex, hoveredSlot.Value) ? current : null) : "当前没有合法目标。" :
-                selectedUnit.HasValue ? "选择己方位置换位，或拖到收回队员。换位和收回均免费。" :
+                selectedUnit.HasValue ? canRecall ? "选择己方位置换位，或拖到收回队员。换位和收回均免费。"
+                    : game.At(selectedUnit.Value)?.Type.Summon == true ? "召唤单位不能召回，可以免费换位。" : "选择己方位置免费换位。" :
                 current != null ? UnitDetails(current) :
-                game.Opening ? "将戴冠的牌部署到己方空位，部署不消耗回合。" : "悬停预览目标 · 空格敲换牌铃";
+                game.Opening ? "将戴冠的牌拖到己方站位，开局部署不消耗回合。" : "悬停预览目标 · 空格敲换牌铃";
+            TerrainTile tile = hoveredSlot.HasValue ? game.TerrainAt(hoveredSlot.Value) : default;
+            if (tile.HasEffects)
+                hint.text += $" · 脚下格子 {tile.Describe()}";
             ApplyOrder();
         }
 
@@ -909,41 +1002,54 @@ namespace Frostline
                 int damage = Expedition.PreviewHealthDamage(target, hit);
                 preview = $" 本次伤害 {damage}。";
             }
+            if (target != null && card.Effect == EffectKind.OverloadDamage)
+                preview = $" 本次伤害 {Expedition.PreviewHealthDamage(target, target.Overload)}，过载 {target.Overload} → {target.Overload / 2}。";
             return DescribeCard(card, game != null && game.Hand.Contains(card) ? game : null) + Effects.Rule(card.Effect) + preview;
         }
 
         private static string DescribeCard(Card card, Expedition battle) =>
-            card.Describe(card.IsJunk ? battle?.JunkAttackBonus ?? 0 : 0,
-                battle?.Hand.Count(item => item.IsJunk));
+            card.Describe(battle?.CardDamageBonus(card) ?? 0, battle?.Hand.Count(item => item.IsJunk), battle?.SummonAllies);
 
         private static string UnitDetails(Unit unit)
         {
             UnitType type = unit.Type;
-            string pattern = Expedition.PatternName(unit.Pattern);
+            string pattern = unit.Period > 0 ? Expedition.PatternName(unit.Pattern) : type.Counterattack ? "仅反击" : "不主动行动";
             if (unit.Pattern == AttackPattern.Aimless)
                 pattern += "（从高亮目标随机选一名）";
             if (type.Pattern == AttackPattern.Support)
                 pattern += "（倒计时归零，给予同排最前方的其他友军）";
             string frenzy = unit.Frenzy > 1 ? $" · 狂热 ×{unit.Frenzy}" : "";
-            string ability = type.Ability.Effect == EffectKind.None ? "" : " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack);
+            string counterattack = type.Counterattack
+                ? $" · 受单位攻击后存活时，按当前攻击力 {unit.Attack} 反击{(unit.Pattern == AttackPattern.AllEnemies ? "全体敌军" : "攻击者")}，保留当前倒计时"
+                : "";
+            string ability = type.Ability.Effect == EffectKind.None ? "" :
+                " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern);
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
+            string summon = type.Summon ? " · 召唤：不能召回，阵亡后回到弃牌堆并恢复满生命" : "";
+            string enemySide = type.DeployOnEnemy ? " · 部署在敌方空位，算作敌方单位，必须击倒才能过关" : "";
             string ink = unit.Ink > 0 ? $" · 墨水 {unit.Ink}（触发能力停用）" : "";
             string overload = unit.Overload > 0 ? $" · 过载 {unit.Overload}/{unit.Health}，达到生命时引爆" : "";
             string buffs = (unit.Spice > 0 ? $" · 辣椒 {unit.Spice}" : "") +
+                (unit.TemporaryAttack > 0 ? $" · 临时攻击 +{unit.TemporaryAttack}，每回合减 1" : "") +
+                (unit.TerrainAttack != 0 ? $" · 地形攻击 {unit.TerrainAttack:+0;-0}" : "") +
                 (unit.Weakness > 0 ? $" · 虚弱 {unit.Weakness}" : "") +
                 (unit.Block > 0 ? $" · 格挡 {unit.Block}" : "") +
                 (unit.Frozen > 0 ? $" · 雪球 {unit.Frozen}" : "") +
                 (unit.Shell > 0 ? $" · 护壳 {unit.Shell}" : "") +
-                (unit.Thorns > 0 ? $" · 反伤 {unit.Thorns}" : "") +
+                (unit.TotalThorns > 0 ? $" · 反伤 {unit.TotalThorns}" : "") +
+                (unit.PermanentJunk > 0 ? $" · 永久垃圾（在场时每回合开始向你的手牌生成 {unit.PermanentJunk} 张垃圾）" : "") +
                 (unit.Burn > 0 ? $" · 灼烧 {unit.Burn}" : "") +
                 (unit.Poison > 0 ? $" · 中毒 {unit.Poison}" : "") +
                 (unit.Corruption > 0 ? $" · 腐化 {unit.Corruption}（受伤翻倍）" : "") +
                 (unit.Exposed > 0 ? $" · 易伤 {unit.Exposed}" : "") +
+                (unit.Haze > 0 ? $" · 迷雾 {unit.Haze}（下次攻击改打自己的友军）" : "") +
+                (unit.DamageThisTurn > 0 ? $" · 本回合结束时受到 {unit.DamageThisTurn} 点伤害" : "") +
+                (unit.DamageNextTurn > 0 ? $" · 下回合结束时受到 {unit.DamageNextTurn} 点伤害" : "") +
                 (unit.EffectBonus > 0 ? $" · 效果 +{unit.EffectBonus}" : "");
             string pendant = unit.Pendant != Pendant.None
                 ? $" · {Pendants.Name(unit.Pendant)} {Pendants.Description(unit.Pendant)}" : "";
             string growth = unit.BaseAttack > type.Power ? $" · 基础攻击 {unit.BaseAttack}" : "";
-            return pattern + frenzy + ability + resistance + ink + overload + buffs + growth + pendant;
+            return pattern + frenzy + counterattack + ability + summon + enemySide + resistance + ink + overload + buffs + growth + pendant;
         }
 
         private void RenderOverlay()
@@ -976,7 +1082,10 @@ namespace Frostline
                 {
                     int index = i;
                     ExpeditionFaction faction = route.Factions[i];
-                    var option = AddChoice(faction.Name, $"起始牌 {faction.StartingDeck.Count} 张", faction.Strategy, () =>
+                    string start = faction.OpeningCompanions.Count == 1
+                        ? $"初始伙伴 {faction.OpeningCompanions[0].Name} · 起始牌 {faction.StartingDeck.Count} 张"
+                        : $"起始牌 {faction.StartingDeck.Count} 张";
+                    var option = AddChoice(faction.Name, start, faction.Strategy, () =>
                     {
                         if (route.ChooseFaction(index))
                             RenderOverlay();
@@ -1179,26 +1288,47 @@ namespace Frostline
             inspectDeck = screen.Q<Button>("inspect-deck");
             inspectDraw = screen.Q<Button>("inspect-draw");
             inspectDiscard = screen.Q<Button>("inspect-discard");
+            inspectExhaust = screen.Q<Button>("inspect-exhaust");
+            exhaustCount = screen.Q<Label>("exhaust-count");
             routeDeck = screen.Q<Button>("route-deck");
             rosterTab = screen.Q<Button>("deck-roster-tab");
             drawTab = screen.Q<Button>("deck-draw-tab");
             discardTab = screen.Q<Button>("deck-discard-tab");
+            exhaustTab = screen.Q<Button>("deck-exhaust-tab");
+            gmButton = screen.Q<Button>("battle-gm");
+            gmAddCard = screen.Q<Button>("gm-add-card");
+            gmBack = screen.Q<Button>("gm-back");
+            gmMenu = screen.Q("gm-menu");
+            gmEnemySlots = screen.Q("gm-enemy-slots");
+            gmButton.style.display = Debug.isDebugBuild ? DisplayStyle.Flex : DisplayStyle.None;
+            BindGameMasterTools();
 
             inspectDeck.clicked += () => ShowDeck(DeckPage.Roster);
             inspectDraw.clicked += () => ShowDeck(DeckPage.Draw);
             inspectDiscard.clicked += () => ShowDeck(DeckPage.Discard);
+            inspectExhaust.clicked += () => ShowDeck(DeckPage.Exhaust);
             routeDeck.clicked += () => ShowDeck(DeckPage.Roster);
             rosterTab.clicked += () => ShowDeck(DeckPage.Roster);
             drawTab.clicked += () => ShowDeck(DeckPage.Draw);
             discardTab.clicked += () => ShowDeck(DeckPage.Discard);
+            exhaustTab.clicked += () => ShowDeck(DeckPage.Exhaust);
             foreach (string button in new[] { "title-codex", "battle-codex", "route-codex" })
                 screen.Q<Button>(button).clicked += () => ShowDeck(DeckPage.Codex);
+            gmButton.clicked += () => ShowDeck(DeckPage.GameMasterMenu);
+            gmBack.clicked += () => ShowDeck(DeckPage.GameMasterMenu);
+            gmAddCard.clicked += AddSelectedTestCard;
             screen.Q<Button>("close-deck").clicked += CloseDeck;
         }
 
         private void ShowDeck(DeckPage page)
         {
-            if (page == DeckPage.Codex ? !CanOpenCodex : !CanReviewDeck || (page != DeckPage.Roster && game == null))
+            bool allowed = page switch
+            {
+                DeckPage.Codex => CanOpenCodex,
+                DeckPage.GameMaster or DeckPage.GameMasterMenu or DeckPage.GameMasterEnemies => CanOpenGameMaster,
+                _ => CanReviewDeck && (page == DeckPage.Roster || game != null)
+            };
+            if (!allowed)
                 return;
 
             ClearDrag();
@@ -1208,13 +1338,33 @@ namespace Frostline
             deckGrid.Clear();
             deckDetail.Clear();
             selectedDeckTile = null;
+            selectedDeckCard = null;
+            gmEnemyPosition = null;
             deckScroll.scrollOffset = Vector2.zero;
 
-            bool codex = page == DeckPage.Codex;
-            screen.Q<Label>("deck-title").text = codex ? "卡牌图鉴" : "牌组一览";
-            rosterTab.parent.style.display = codex ? DisplayStyle.None : DisplayStyle.Flex;
-            screen.Q("codex-tabs").style.display = codex ? DisplayStyle.Flex : DisplayStyle.None;
-            if (codex)
+            bool catalog = page is DeckPage.Codex or DeckPage.GameMaster or DeckPage.GameMasterEnemies;
+            bool menu = page == DeckPage.GameMasterMenu;
+            bool enemy = page == DeckPage.GameMasterEnemies;
+            screen.Q<Label>("deck-title").text = menu ? "GM" : IsGameMasterTool
+                ? "GM · " + GameMasterTools.First(tool => tool.Page == page).Title : catalog ? "卡牌图鉴" : "牌组一览";
+            screen.Q("deck-body").style.display = menu ? DisplayStyle.None : DisplayStyle.Flex;
+            gmMenu.style.display = menu ? DisplayStyle.Flex : DisplayStyle.None;
+            gmBack.style.display = IsGameMasterTool ? DisplayStyle.Flex : DisplayStyle.None;
+            screen.Q("deck-panel").EnableInClassList("gm-enemy-view", enemy);
+            screen.Q("gm-enemy-placement").style.display = enemy ? DisplayStyle.Flex : DisplayStyle.None;
+            rosterTab.parent.style.display = catalog || menu ? DisplayStyle.None : DisplayStyle.Flex;
+            screen.Q("codex-tabs").style.display = catalog ? DisplayStyle.Flex : DisplayStyle.None;
+            gmAddCard.style.display = IsGameMasterTool ? DisplayStyle.Flex : DisplayStyle.None;
+            gmAddCard.text = enemy ? "加入敌方" : "加入手牌";
+            gmAddCard.SetEnabled(false);
+            if (menu)
+            {
+                deckSummary.text = "选择调试功能，仅影响本场战斗。";
+                return;
+            }
+            if (enemy)
+                SelectNextEnemySlot();
+            if (catalog)
             {
                 ShowCodexGroup(null);
                 return;
@@ -1225,24 +1375,29 @@ namespace Frostline
             rosterTab.EnableInClassList("current", roster);
             drawTab.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
             discardTab.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
+            exhaustTab.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
             if (game != null)
             {
                 drawTab.text = $"抽牌堆  {game.DrawCount}";
                 discardTab.text = $"弃牌堆  {game.DiscardCount}";
+                exhaustTab.text = $"消耗堆  {game.ExhaustCount}";
                 drawTab.EnableInClassList("current", page == DeckPage.Draw);
                 discardTab.EnableInClassList("current", page == DeckPage.Discard);
+                exhaustTab.EnableInClassList("current", page == DeckPage.Exhaust);
             }
 
             var source = page switch
             {
                 DeckPage.Draw => game.DrawPile,
                 DeckPage.Discard => game.DiscardPile,
+                DeckPage.Exhaust => game.ExhaustPile,
                 _ => route.Deck
             };
             deckSummary.text = page switch
             {
                 DeckPage.Draw => "查看剩余卡牌。列表按卡名排列。",
                 DeckPage.Discard => "抽牌堆见底时，这些牌将洗回抽牌堆。",
+                DeckPage.Exhaust => "本场已消耗的牌，不会洗回抽牌堆。下一场重新可用。",
                 _ => $"{route.Loadout.DeckName} · 2 张开局部署牌 · {source.Count} 张卡组牌"
             };
 
@@ -1255,7 +1410,8 @@ namespace Frostline
             // Group only cards with identical combat values, including recalled units' health and pendants.
             var groups = source.GroupBy(card =>
                 (card.Name, card.Unit, card.Action, card.Amount, card.Damage, card.Effect, card.TargetsEnemy,
-                    card.DeploymentHealth, card.DeploymentAttack, card.DeploymentEffectBonus, card.Pendant, card.BonusAgainst, card.BonusDamage, card.Technique));
+                    card.DeploymentHealth, card.DeploymentAttack, card.DeploymentEffectBonus, card.Pendant, card.BonusAgainst, card.BonusDamage, card.Technique,
+                    card.UsesRemaining, card.BonusHits));
             foreach (var group in groups.OrderBy(group => group.Key.Name, StringComparer.Ordinal))
                 AddDeckTile(group.First(), group.Count(), null);
 
@@ -1264,12 +1420,77 @@ namespace Frostline
         }
 
         private bool CanOpenCodex => route?.Catalog.Count > 0 && resolving == null && game?.Phase != BattlePhase.Resolving;
+        private bool CanOpenGameMaster => Debug.isDebugBuild && CanOpenCodex &&
+            game?.Phase == BattlePhase.Planning && !confirmRestart;
+
+        private bool IsGameMasterTool => deckPage is DeckPage.GameMaster or DeckPage.GameMasterEnemies;
+        private bool IsGameMasterPage => IsGameMasterTool || deckPage == DeckPage.GameMasterMenu;
+
+        private void BindGameMasterTools()
+        {
+            gmMenu.Clear();
+            foreach (var tool in GameMasterTools)
+            {
+                var button = ButtonWith(null, () => ShowDeck(tool.Page), "button", "gm-tool");
+                button.name = tool.Id;
+                button.Add(Text(tool.Title, "gm-tool-title"));
+                button.Add(Text(tool.Description, "gm-tool-description"));
+                gmMenu.Add(button);
+            }
+
+            gmEnemySlots.Clear();
+            gmSlotButtons.Clear();
+            for (int row = 0; row < Expedition.Rows; row++)
+            for (int slot = 0; slot < Expedition.Slots; slot++)
+            {
+                var pos = new Position(true, row, slot);
+                var button = ButtonWith(null, () =>
+                {
+                    gmEnemyPosition = pos;
+                    RefreshEnemySlots();
+                }, "button", "gm-enemy-slot");
+                button.name = $"gm-enemy-slot-{row}-{slot}";
+                gmSlotButtons.Add(pos, button);
+                gmEnemySlots.Add(button);
+            }
+        }
+
+        private void SelectNextEnemySlot()
+        {
+            gmEnemyPosition = null;
+            foreach (Position pos in gmSlotButtons.Keys)
+                if (game.CanPlaceAt(pos))
+                {
+                    gmEnemyPosition = pos;
+                    break;
+                }
+        }
+
+        private void RefreshEnemySlots()
+        {
+            if (deckPage != DeckPage.GameMasterEnemies)
+                return;
+            foreach (var entry in gmSlotButtons)
+            {
+                Unit unit = game.At(entry.Key);
+                bool placeable = game.CanPlaceAt(entry.Key);
+                entry.Value.text = $"{(entry.Key.Row == 0 ? "上" : "下")}排 · {entry.Key.Slot + 1} 号{(unit == null ? "" : "（占用）")}";
+                entry.Value.tooltip = unit?.Type.Name ?? (placeable ? "可部署" : "先填满前方空位");
+                entry.Value.SetEnabled(placeable && CanOpenGameMaster);
+                entry.Value.EnableInClassList("current", placeable && gmEnemyPosition.HasValue && gmEnemyPosition.Value.Equals(entry.Key));
+            }
+            gmAddCard.SetEnabled(CanOpenGameMaster && gmEnemyPosition.HasValue &&
+                game.CanAddTestEnemy(selectedDeckCard?.Unit, gmEnemyPosition.Value));
+        }
 
         private void ShowCodexGroup(string group)
         {
             var tabs = screen.Q("codex-tabs");
             tabs.Clear();
-            var groups = route.Catalog.Select(entry => entry.Group).Distinct().Prepend(null);
+            IEnumerable<(string Group, Card Card)> available = route.Catalog;
+            if (deckPage == DeckPage.GameMasterEnemies)
+                available = available.Where(entry => entry.Card.Unit != null).Prepend(("GM 测试", GameMasterTestEnemy)).ToArray();
+            var groups = available.Select(entry => entry.Group).Distinct().Prepend(null);
             foreach (string option in groups)
             {
                 var tab = ButtonWith(option ?? "全部", () => ShowCodexGroup(option), "button", "deck-tab");
@@ -1280,16 +1501,47 @@ namespace Frostline
             deckDetail.Clear();
             deckGrid.Clear();
             selectedDeckTile = null;
+            selectedDeckCard = null;
+            gmAddCard.SetEnabled(false);
             deckScroll.scrollOffset = Vector2.zero;
-            var entries = route.Catalog.Where(entry => group == null || entry.Group == group).ToArray();
-            deckSummary.text = $"共 {entries.Length} 张牌。选中卡牌查看数值和效果。";
+            var entries = available.Where(entry => group == null || entry.Group == group)
+                .OrderBy(entry => entry.Card.Unit == null).ToArray();
+            deckSummary.text = deckPage switch
+            {
+                DeckPage.GameMaster => $"共 {entries.Length} 张牌。选择卡牌后点加入手牌，仅用于本场战斗。",
+                DeckPage.GameMasterEnemies => $"共 {entries.Length} 名单位。选择单位和敌方空位后点加入敌方，不消耗回合。",
+                _ => $"共 {entries.Length} 张牌。选中卡牌查看数值和效果。"
+            };
             foreach (var entry in entries)
                 AddDeckTile(entry.Card, 1, null);
+            RefreshEnemySlots();
+            if (deckPage == DeckPage.GameMasterEnemies && !gmEnemyPosition.HasValue)
+                deckSummary.text = "敌方 6 个位置已满。击倒敌人腾出空位后可继续添加。";
+        }
+
+        private void AddSelectedTestCard()
+        {
+            if (!IsGameMasterTool || !CanOpenGameMaster)
+                return;
+
+            if (deckPage == DeckPage.GameMasterEnemies)
+            {
+                if (!gmEnemyPosition.HasValue || !game.TryAddTestEnemy(selectedDeckCard?.Unit, gmEnemyPosition.Value))
+                    return;
+                SelectNextEnemySlot();
+                RefreshEnemySlots();
+            }
+            else if (!game.TryAddTestCard(selectedDeckCard))
+                return;
+            Render();
+            deckSummary.text = game.Notice + (deckPage == DeckPage.GameMasterEnemies && !gmEnemyPosition.HasValue ? " 敌方位置已满。" : "");
         }
 
         private void CloseDeck()
         {
             deckPage = null;
+            selectedDeckCard = null;
+            gmEnemyPosition = null;
             deckOverlay.style.display = DisplayStyle.None;
         }
 
@@ -1317,13 +1569,16 @@ namespace Frostline
         {
             selectedDeckTile?.RemoveFromClassList("current");
             selectedDeckTile = tile;
+            selectedDeckCard = card;
             selectedDeckTile.AddToClassList("current");
+            gmAddCard.SetEnabled(deckPage == DeckPage.GameMaster && CanOpenGameMaster);
             deckDetail.Clear();
             deckDetail.Add(Text(role ?? (card.Unit != null ? "队员" : "道具"), "deck-card-role"));
             var face = Element("deck-card-face");
             DrawCardFace(face, card, role == "主角", role != null);
             deckDetail.Add(face);
             deckDetail.Add(Text(card.Unit == null ? CardDetails(card) : UnitDetails(DeploymentPreview(card, false)), "deck-card-description"));
+            RefreshEnemySlots();
         }
 
         private void OnPointerDown(PointerDownEvent evt)
@@ -1670,7 +1925,7 @@ namespace Frostline
             var fill = view.Q("unit-health-fill");
             fill.style.width = Length.Percent(unit.Health * 100f / unit.MaxHealth);
             view.Q<Label>("unit-health").text = $"{unit.Health}/{unit.MaxHealth}";
-            view.Q<Label>("unit-attack").text = unit.Attack.ToString();
+            view.Q<Label>("unit-attack").text = type.Passive ? "—" : unit.Attack.ToString();
             view.Q("unit-counter").style.display = unit.Period > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             view.Q<Label>("unit-counter-value").text = unit.Counter.ToString();
 
@@ -1688,11 +1943,14 @@ namespace Frostline
             AddEffectBadge(statuses, EffectKind.Weakness, unit.Weakness);
             AddEffectBadge(statuses, EffectKind.Block, unit.Block);
             AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
-            AddEffectBadge(statuses, EffectKind.Thorns, unit.Thorns);
+            AddEffectBadge(statuses, EffectKind.Thorns, unit.TotalThorns);
+            AddEffectBadge(statuses, EffectKind.PermanentJunk, unit.PermanentJunk);
             AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
             AddEffectBadge(statuses, EffectKind.Poison, unit.Poison);
             AddEffectBadge(statuses, EffectKind.Corruption, unit.Corruption);
             AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
+            AddEffectBadge(statuses, EffectKind.Haze, unit.Haze);
+            AddEffectBadge(statuses, EffectKind.DelayedDamage, unit.DamageThisTurn + unit.DamageNextTurn);
             statuses.style.display = statuses.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             statuses.EnableInClassList("dense", statuses.childCount > 10);
 
@@ -1706,34 +1964,53 @@ namespace Frostline
                 tags.Add(Icon("snow", "resist-icon"));
             if (unit.Frenzy > 1)
                 tags.Add(Text($"狂热 ×{unit.Frenzy}", "trait"));
+            if (type.Counterattack)
+                tags.Add(Text("反击", "trait"));
+            if (type.Summon)
+                tags.Add(Text("召唤", "trait"));
+            if (type.DeployOnEnemy)
+                tags.Add(Text("部署在敌方", "trait"));
             bool hasAbility = type.Ability.Effect != EffectKind.None;
             var skill = view.Q("unit-ability");
             skill.style.display = hasAbility ? DisplayStyle.Flex : DisplayStyle.None;
+            skill.EnableInClassList("recycle-draw", type.Ability.Effect == EffectKind.RecycleDraw);
             view.Q("unit-traits").style.display = tags.childCount > 0 || hasAbility ? DisplayStyle.Flex : DisplayStyle.None;
             if (hasAbility)
             {
                 view.Q<Label>("unit-trigger").text = type.Ability.Timing;
+                if (unit.Pattern == AttackPattern.Support && type.Ability.Trigger == EffectTrigger.Act)
+                    view.Q<Label>("unit-trigger").text = "援护时";
                 Paint(view.Q("unit-ability-icon"), $"CardArt/icon_{EffectIcon(type.Ability.Effect)}");
                 string value = type.Ability.Effect switch
                 {
                     EffectKind.JunkPower => $"+{unit.Attack}",
-                    EffectKind.Retaliate => "",
+                    EffectKind.RecycleDraw => $"摧毁手中垃圾牌，每张抽 {type.Ability.Amount + unit.AbilityBonus} 张",
                     EffectKind.SelfAttack => $"自身 {unit.Attack}",
                     EffectKind.DamageVsLowerHealth => $"×{type.Ability.Amount + unit.AbilityBonus}",
                     EffectKind.HurtForFrenzy => $"生命 −{type.Ability.Amount + unit.AbilityBonus} / 狂热 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
                     EffectKind.MaxCountdownUp => $"计数 +{type.Ability.Amount + unit.AbilityBonus} / 攻击 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.SnowAndAttackUp => $"雪球 +{type.Ability.Amount + unit.AbilityBonus} / 攻击 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.SummonBoost => $"攻击 +{type.Ability.Amount + unit.AbilityBonus} / 生命 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.DevourRow => "吞噬同排",
+                    EffectKind.TerrainAnchor => $"格子攻击 +{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.TerrainAffinity => $"格子效果 ×{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.TerrainAbsorb => "吸收脚下格子",
+                    EffectKind.TerrainGrowth => $"攻击 +{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.TerrainTransfer => $"下放攻击 {type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.TerrainCannon => $"格攻 −{type.Ability.Amount + unit.AbilityBonus} / 虚弱 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.TerrainPoison => $"命中格子 毒 +{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.TerrainGambit => $"格临攻 +{type.Ability.Amount + unit.AbilityBonus} / 毒 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
+                    EffectKind.TerrainDetox => $"吸毒 {type.Ability.Amount + unit.AbilityBonus} · 每层回 1 血",
+                    EffectKind.TriggerAttack => "攻击",
+                    EffectKind.RowBlast => $"同排 {type.Ability.Amount + unit.AbilityBonus}",
                     EffectKind.AttackDown => $"−{type.Ability.Amount + unit.AbilityBonus}",
                     _ => $"+{type.Ability.Amount + unit.AbilityBonus}"
                 };
                 view.Q<Label>("unit-ability-amount").text = value;
-                if (type.Ability.Effect == EffectKind.SnowOnBlock)
-                    view.Q<Label>("unit-trigger").text = "行动 / 格挡";
+                if (type.Ability.Effect == EffectKind.TerrainAnchor)
+                    view.Q<Label>("unit-trigger").text = "本场首次部署";
                 if (type.Ability.Effect == EffectKind.DamageVsLowerHealth)
                     view.Q<Label>("unit-trigger").text = "目标血量更低";
-                else if (type.Ability.Trigger == EffectTrigger.Attack)
-                    view.Q<Label>("unit-trigger").text = "攻击后";
-                if (type.Ability.Trigger == EffectTrigger.TurnEnd)
-                    view.Q<Label>("unit-trigger").text = "回合末";
                 if (type.Ability.Trigger == EffectTrigger.WhileWounded)
                     view.Q<Label>("unit-trigger").text = "回合末受伤";
                 skill.EnableInClassList("silenced", unit.Ink > 0);
@@ -1752,6 +2029,7 @@ namespace Frostline
             EffectKind.Poison => "effect-poison",
             EffectKind.Corruption => "effect-corruption",
             EffectKind.Exposed => "effect-exposed",
+            EffectKind.DelayedDamage => "effect-burn",
             _ => "effect-bonus"
         };
 
@@ -1774,7 +2052,12 @@ namespace Frostline
             EffectKind.Retaliate => "barbs",
             EffectKind.StickyFruit => "heal",
             EffectKind.SnowOnBlock => "snow",
-            EffectKind.Poison => "poison",
+            EffectKind.SnowAndAttackUp => "snow",
+            EffectKind.DrainAlly or EffectKind.DevourRow or EffectKind.SummonBoost => "health",
+            EffectKind.TriggerAttack => "attack",
+            EffectKind.RowBlast => "overload",
+            EffectKind.Poison or EffectKind.TerrainPoison or EffectKind.TerrainDetox => "poison",
+            EffectKind.TerrainAnchor or EffectKind.TerrainGrowth or EffectKind.TerrainTransfer or EffectKind.TerrainCannon or EffectKind.TerrainGambit => "attack",
             EffectKind.Corruption => "corruption",
             EffectKind.MaxCountdownUp or EffectKind.ExtraAllyTick => "timer",
             EffectKind.TeamHealth or EffectKind.AbsorbRow => "health",
@@ -1783,6 +2066,8 @@ namespace Frostline
             EffectKind.SelfAttack or EffectKind.DamageVsLowerHealth => "attack",
             EffectKind.Exposed => "exposed",
             EffectKind.HealthGrowth => "health",
+            EffectKind.DelayedDamage => "attack",
+            EffectKind.MutualOverload or EffectKind.OverloadDamage => "overload",
             _ => "bonus"
         };
 

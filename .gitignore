@@ -4,6 +4,8 @@
 /Obj/
 /UserSettings/
 /Builds/
+/Assets/Resources/Config/EmbeddedCardWorkbook.asset
+/Assets/Resources/Config/EmbeddedCardWorkbook.asset.meta
 .vs/
 *.csproj
 *.sln

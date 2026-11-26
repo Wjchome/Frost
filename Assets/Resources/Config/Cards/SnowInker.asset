@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SnowInker
   m_EditorClassIdentifier:
   displayName: "墨水者"
-  catalogGroup: "雪人"
+  catalogGroup: "召唤者"
   portrait: {fileID: 2800000, guid: 2b98caac6fed7ea4088972e291a26967, type: 3}
   action: 0
   health: 5

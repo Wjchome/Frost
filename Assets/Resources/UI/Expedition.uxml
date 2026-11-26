@@ -35,6 +35,7 @@
         <ui:VisualElement class="top-actions">
           <ui:Button name="inspect-deck" text="牌组 [B]" class="button top-button" focusable="false" />
           <ui:Button name="battle-codex" text="图鉴 [C]" class="button top-button" focusable="false" />
+          <ui:Button name="battle-gm" text="GM" class="button top-button gm-button" focusable="false" style="display: none;" />
           <ui:Button name="action-order" text="行动预览 [Tab]" class="button top-button" />
           <ui:Button name="battle-sound" class="button top-button" focusable="false" />
           <ui:Button name="restart" text="重开本战" class="button top-button" />
@@ -65,6 +66,10 @@
             <ui:Label text="弃牌堆" class="pile-name" />
             <ui:Label name="discard-count" class="pile-count" />
           </ui:Button>
+          <ui:Button name="inspect-exhaust" class="button pile-button" focusable="false">
+            <ui:Label text="消耗堆" class="pile-name" />
+            <ui:Label name="exhaust-count" class="pile-count" />
+          </ui:Button>
           <ui:Button name="recall" text="收回队员" class="button deck-button" />
         </ui:VisualElement>
         <ui:ScrollView name="hand-scroll" mode="Horizontal" class="hand-scroll" horizontal-scroller-visibility="Auto" vertical-scroller-visibility="Hidden">
@@ -93,19 +98,29 @@
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="deck-overlay" class="overlay deck-overlay">
-      <ui:VisualElement class="deck-panel">
+      <ui:VisualElement name="deck-panel" class="deck-panel">
         <ui:VisualElement class="deck-heading">
           <ui:Label name="deck-title" text="牌组一览" class="result-title" />
-          <ui:Button name="close-deck" text="关闭 [Esc]" class="button" focusable="false" />
+          <ui:VisualElement class="deck-heading-actions">
+            <ui:Button name="gm-back" text="返回 GM" class="button gm-button" focusable="false" style="display: none;" />
+            <ui:Button name="gm-add-card" text="加入手牌" class="button gm-button" focusable="false" style="display: none;" />
+            <ui:Button name="close-deck" text="关闭 [Esc]" class="button" focusable="false" />
+          </ui:VisualElement>
         </ui:VisualElement>
         <ui:VisualElement class="deck-navigation">
           <ui:Button name="deck-roster-tab" class="button deck-tab" focusable="false" />
           <ui:Button name="deck-draw-tab" class="button deck-tab" focusable="false" />
           <ui:Button name="deck-discard-tab" class="button deck-tab" focusable="false" />
+          <ui:Button name="deck-exhaust-tab" class="button deck-tab" focusable="false" />
         </ui:VisualElement>
         <ui:VisualElement name="codex-tabs" class="deck-navigation" />
         <ui:Label name="deck-summary" class="deck-summary" />
-        <ui:VisualElement class="deck-body">
+        <ui:VisualElement name="gm-menu" class="gm-menu" style="display: none;" />
+        <ui:VisualElement name="gm-enemy-placement" class="gm-enemy-placement" style="display: none;">
+          <ui:Label text="选择敌方空位 · 1 号在最前方" class="gm-placement-label" />
+          <ui:VisualElement name="gm-enemy-slots" class="gm-enemy-slots" />
+        </ui:VisualElement>
+        <ui:VisualElement name="deck-body" class="deck-body">
           <ui:ScrollView name="deck-scroll" class="deck-scroll" mode="Vertical">
             <ui:VisualElement name="deck-grid" class="deck-grid" />
           </ui:ScrollView>

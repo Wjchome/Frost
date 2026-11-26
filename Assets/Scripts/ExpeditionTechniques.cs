@@ -6,30 +6,51 @@ namespace Frostline
 {
     public sealed partial class Expedition
     {
-        public int JunkAttackBonus { get; private set; }
+        public int JunkAttackBonus => TurnOrder().Where(pos => !pos.Enemy)
+            .Select(At).Where(unit => HasActiveAbility(unit, EffectTrigger.WhileActive, EffectKind.JunkPower))
+            .Sum(unit => unit.Attack);
 
         private static bool HasActiveAbility(Unit unit, EffectTrigger trigger, EffectKind effect) =>
             unit != null && unit.Ink == 0 && unit.Type.Ability.Trigger == trigger && unit.Type.Ability.Effect == effect;
 
-        private IEnumerable<BattleBeat> ApplyEntryBuff(Position position, Unit source, int amount)
+        private void RefreshAuras()
         {
-            EffectKind effect = source.Type.Ability.Effect;
-            if (effect == EffectKind.JunkPower)
+            for (int side = 0; side < board.GetLength(0); side++)
             {
-                if (!position.Enemy && source.Attack > 0)
+                int attack = 0, thorns = 0, summonAttack = 0, summonHealth = 0;
+                for (int row = 0; row < Rows; row++)
+                for (int slot = 0; slot < Slots; slot++)
                 {
-                    int bonus = source.Attack;
-                    JunkAttackBonus += bonus;
-                    string label = $"本场垃圾伤害 +{bonus}";
-                    Notice = $"{source.Type.Name} · {label}";
-                    yield return new BattleBeat(position, position, BattleEffect.Status, label);
+                    Unit unit = board[side, row, slot];
+                    if (HasActiveAbility(unit, EffectTrigger.WhileActive, EffectKind.AttackUp))
+                        attack += unit.Type.Ability.Amount + unit.AbilityBonus;
+                    if (HasActiveAbility(unit, EffectTrigger.WhileActive, EffectKind.Thorns))
+                        thorns += unit.Type.Ability.Amount + unit.AbilityBonus;
+                    if (HasActiveAbility(unit, EffectTrigger.WhileActive, EffectKind.SummonBoost))
+                    {
+                        summonAttack += unit.Type.Ability.Amount + unit.AbilityBonus;
+                        summonHealth += unit.Type.Ability.SecondaryAmount + unit.AbilityBonus;
+                    }
                 }
-                yield break;
-            }
 
-            foreach (Position ally in PositionsOnSide(position.Enemy))
-                foreach (var beat in ApplyEffect(position, ally, effect, amount))
-                    yield return beat;
+                for (int row = 0; row < Rows; row++)
+                for (int slot = 0; slot < Slots; slot++)
+                    if (board[side, row, slot] is Unit unit)
+                    {
+                        unit.AuraAttack = attack + (unit.Type.Summon ? summonAttack : 0);
+                        unit.AuraThorns = thorns;
+                        // Gaining the aura heals by the same amount; losing it only trims health above the new maximum.
+                        int health = unit.Type.Summon ? summonHealth : 0;
+                        int change = health - unit.AuraHealth;
+                        unit.AuraHealth = health;
+                        if (change > 0)
+                            unit.Health += change;
+                        else if (change < 0)
+                            unit.Health = Math.Min(unit.Health, unit.MaxHealth);
+                    }
+                for (int row = 0; row < Rows; row++)
+                    RefreshTerrainAttack(side == 1, row);
+            }
         }
 
         private void GenerateJunk(int count)
@@ -40,13 +61,25 @@ namespace Frostline
                 hand.Add(junkCard);
         }
 
-        private void RemoveIfDefeated(Position pos, Unit victim)
+        public int SummonAllies => TurnOrder().Count(pos => !pos.Enemy && At(pos) is Unit unit && unit.Type.Summon);
+
+        // Extra damage a card currently deals, shown on its face and used when it is played.
+        public int CardDamageBonus(Card card) =>
+            (card.IsJunk ? JunkAttackBonus : 0) + (card.Technique?.DamagePerSummon ?? 0) * SummonAllies;
+
+        private void RemoveIfDefeated(Position pos, Unit victim, bool sacrificed = false)
         {
             if (victim.Health > 0)
                 return;
+            if (sacrificed && !pos.Enemy && !victim.Leader)
+                pendingSacrifices++;
             if (!pos.Enemy && HasActiveAbility(victim, EffectTrigger.Death, EffectKind.Junk))
                 GenerateJunk(victim.Type.Ability.Amount + victim.AbilityBonus);
+            if (HasActiveAbility(victim, EffectTrigger.Death, EffectKind.RowBlast))
+                pendingBlasts.Add((pos, victim));
             Set(pos, null);
+            if (victim.FromHand && victim.Type.Summon && !victim.Leader)
+                discard.Add(Card.FromSummon(victim));
             GainAttackOnEvent(EffectTrigger.CardDestroyed);
             if (victim.Leader)
             {
@@ -101,9 +134,25 @@ namespace Frostline
                     foreach (var beat in AbsorbRow(source, amount))
                         yield return beat;
                     break;
-                case EffectKind.HurtForFrenzy:
-                    foreach (var beat in ApplyEffect(source, source, EffectKind.Hurt, amount))
+                case EffectKind.DevourRow:
+                    foreach (var beat in DevourRow(source))
                         yield return beat;
+                    break;
+                case EffectKind.DrainAlly:
+                    foreach (var beat in DrainAlly(source, amount))
+                        yield return beat;
+                    break;
+                case EffectKind.HurtForFrenzy:
+                    selfInflicted = true;
+                    try
+                    {
+                        foreach (var beat in ApplyEffect(source, source, EffectKind.Hurt, amount))
+                            yield return beat;
+                    }
+                    finally
+                    {
+                        selfInflicted = false;
+                    }
                     if (At(source) != null && Phase != BattlePhase.Lost)
                         foreach (var beat in ApplyEffect(source, source, EffectKind.Frenzy, secondary))
                             yield return beat;
@@ -145,25 +194,166 @@ namespace Frostline
                     yield return beat;
         }
 
+        private IEnumerable<BattleBeat> DevourRow(Position source)
+        {
+            int attack = 0, health = 0;
+            foreach (Position ally in OccupiedRow(source))
+            {
+                if (ally.Equals(source) || At(ally) is not Unit victim)
+                    continue;
+                attack += Math.Max(0, victim.BaseAttack + victim.BattleAttack);
+                health += victim.Health;
+                foreach (var beat in Sacrifice(ally))
+                    yield return beat;
+                if (Phase == BattlePhase.Lost || At(source) == null)
+                    yield break;
+            }
+            if (attack > 0)
+                foreach (var beat in ApplyEffect(source, source, EffectKind.AttackUp, attack))
+                    yield return beat;
+            if (health > 0)
+                foreach (var beat in ApplyEffect(source, source, EffectKind.BattleHealthUp, health))
+                    yield return beat;
+        }
+
+        private IEnumerable<BattleBeat> DrainAlly(Position source, int amount)
+        {
+            if (amount <= 0)
+                yield break;
+            var donors = PositionsOnSide(source.Enemy).Where(pos => !pos.Equals(source) && !At(pos).Leader).ToArray();
+            if (donors.Length == 0)
+                yield break;
+
+            int total = 0;
+            var marks = new List<string>(donors.Length);
+            foreach (Position donor in donors)
+            {
+                Unit victim = At(donor);
+                int taken = Math.Min(amount, victim.Health);
+                victim.Health -= taken;
+                total += taken;
+                marks.Add($"生命 −{taken}");
+                RemoveIfDefeated(donor, victim, sacrificed: !donor.Enemy);
+            }
+            Notice = $"{At(source)?.Type.Name ?? "吸取者"}从 {donors.Length} 名友军身上共夺取 {total} 点生命。";
+            yield return new BattleBeat(source, donors[0], BattleEffect.Status, marks[0], donors, impactMarks: marks);
+            foreach (var beat in ResolveDeathEvents())
+                yield return beat;
+            if (total > 0 && At(source) != null && Phase != BattlePhase.Lost)
+                foreach (var beat in ApplyEffect(source, source, EffectKind.BattleHealthUp, total))
+                    yield return beat;
+        }
+
+        // A sacrificed unit dies like any other unit, then the player's sacrifice reactions act.
+        private IEnumerable<BattleBeat> Sacrifice(Position target)
+        {
+            Unit victim = At(target);
+            victim.Health = 0;
+            RemoveIfDefeated(target, victim, sacrificed: true);
+            if (!victim.Leader)
+                Notice = $"{victim.Type.Name}被献祭。";
+            yield return new BattleBeat(target, target, BattleEffect.Status, "献祭");
+            foreach (var beat in ResolveDeathEvents())
+                yield return beat;
+        }
+
+        // Death blasts resolve first, then each pending sacrifice lets the player's sacrifice reactions act once.
+        private IEnumerable<BattleBeat> ResolveDeathEvents()
+        {
+            while (Phase != BattlePhase.Lost && (pendingBlasts.Count > 0 || pendingSacrifices > 0))
+            {
+                if (pendingBlasts.Count == 0)
+                {
+                    pendingSacrifices--;
+                    foreach (Position pos in TurnOrder())
+                    {
+                        if (Phase == BattlePhase.Lost)
+                            yield break;
+                        if (!pos.Enemy && At(pos) is Unit ally && HasActiveAbility(ally, EffectTrigger.AllySacrificed, EffectKind.TriggerAttack))
+                            foreach (var beat in Trigger(pos, ally))
+                                yield return beat;
+                    }
+                    continue;
+                }
+                var (origin, bomb) = pendingBlasts[0];
+                pendingBlasts.RemoveAt(0);
+                int damage = bomb.Type.Ability.Amount + bomb.AbilityBonus;
+                List<Position> targets = OccupiedRow(origin);
+                var marks = new List<string>(targets.Count);
+                var blocked = new List<BattleBeat>();
+                foreach (Position target in targets)
+                {
+                    var impact = Hit(origin, target, damage, bomb.Type.Name);
+                    marks.Add(impact.Mark);
+                    if (impact.Blocked)
+                        blocked.Add(impact);
+                }
+                Notice = Phase == BattlePhase.Lost ? $"{Captain.Name}倒下。" : $"{bomb.Type.Name}爆炸 · 同排伤害 {damage}";
+                yield return new BattleBeat(origin, origin, BattleEffect.Burst, "爆炸", targets, impactMarks: marks);
+                foreach (var impact in blocked)
+                    foreach (var reaction in ResolveBlockReaction(impact))
+                        yield return reaction;
+                foreach (Position target in targets)
+                    foreach (BattleBeat burst in CheckOverload(target))
+                        yield return burst;
+            }
+        }
+
+        private Position? EmptySlot(bool enemy, int row)
+        {
+            for (int slot = 0; slot < Slots; slot++)
+            {
+                var pos = new Position(enemy, row, slot);
+                if (At(pos) == null)
+                    return pos;
+            }
+            return null;
+        }
+
+        // Summoned units belong to the player wherever they stand and return to the discard pile when they die.
+        private IEnumerable<BattleBeat> SummonUnit(Position pos, UnitType type)
+        {
+            Unit unit = new Card(type).Recruit().Deploy(false);
+            unit.FromHand = true;
+            Set(pos, unit);
+            Notice = $"召唤{type.Name}。";
+            yield return new BattleBeat(pos, pos, BattleEffect.Arrival, "召唤");
+            foreach (var beat in TriggerAbility(pos, pos, unit, EffectTrigger.Deploy))
+                yield return beat;
+        }
+
+        private static UnitType SummonedCopy(UnitType type, int power, int health) =>
+            new(type.Name, type.Art, power, Math.Max(1, health), type.Period, type.Pattern, type.Frenzy, type.Ability,
+                type.ResistSnow, type.Counterattack, summon: true);
+
+        private UnitType MimicEnemy(int health)
+        {
+            var foes = PositionsOnSide(true);
+            if (foes.Length == 0)
+                return null;
+            UnitType type = At(foes[RollTarget(foes.Length)]).Type;
+            return SummonedCopy(type, type.Power, health);
+        }
+
+        private IEnumerable<BattleBeat> SummonCopy(Position original, Unit unit)
+        {
+            Position? spot = EmptySlot(original.Enemy, original.Row) ?? EmptySlot(original.Enemy, 1 - original.Row);
+            if (!spot.HasValue)
+                yield break;
+            foreach (var beat in SummonUnit(spot.Value, SummonedCopy(unit.Type, unit.BaseAttack, unit.Progress.Health)))
+                yield return beat;
+        }
+
         private IEnumerable<BattleBeat> BoostRandomAlly(Position source, int amount)
         {
             var allies = TurnOrder().Where(pos => pos.Enemy == source.Enemy && !pos.Equals(source) && At(pos) != null).ToArray();
             if (allies.Length == 0)
                 yield break;
             Position chosen = allies[RollTarget(allies.Length)];
-            if (RollTarget(2) == 0)
-            {
-                foreach (var beat in ApplyEffect(source, chosen, EffectKind.AttackUp, amount))
-                    yield return beat;
-            }
-            else
-            {
-                Unit ally = At(chosen);
-                ally.BattleHealth += amount;
-                ally.Health += amount;
-                Notice = $"{ally.Type.Name} · 本场最大生命 +{amount}";
-                yield return new BattleBeat(source, chosen, BattleEffect.Recovery, $"最大生命 +{amount}");
-            }
+            foreach (var beat in ApplyEffect(source, chosen, EffectKind.AttackUp, amount))
+                yield return beat;
+            foreach (var beat in ApplyEffect(source, chosen, EffectKind.BattleHealthUp, amount))
+                yield return beat;
         }
 
         private IEnumerable<BattleBeat> RewardAllyKill(Position attacker, int kills)
@@ -201,9 +391,23 @@ namespace Frostline
             CardTechnique rules = card.Technique;
             if (rules.Target == CardTarget.None)
                 return !anchor.Enemy && unit != null ? new[] { anchor } : Array.Empty<Position>();
+            if (rules.Target == CardTarget.EmptySlot)
+            {
+                bool enemySide = card.Effect == EffectKind.Summon && rules.SummonUnit?.DeployOnEnemy == true;
+                bool ready = card.Effect == EffectKind.MimicEnemy
+                    ? PositionsOnSide(true).Length > 0
+                    : card.Effect == EffectKind.Summon && rules.SummonUnit != null;
+                return ready && anchor.Enemy == enemySide && CanPlaceAt(anchor) ? new[] { anchor } : Array.Empty<Position>();
+            }
             if (unit == null)
                 return Array.Empty<Position>();
+            if ((card.Effect is EffectKind.Sacrifice or EffectKind.CopyAlly) && (anchor.Enemy || unit.Leader))
+                return Array.Empty<Position>();
+            if (card.Effect == EffectKind.CopyAlly && !EmptySlot(false, 0).HasValue && !EmptySlot(false, 1).HasValue)
+                return Array.Empty<Position>();
             if (card.Effect == EffectKind.EffectBonus && unit.Type.Ability.Effect == EffectKind.None)
+                return Array.Empty<Position>();
+            if (card.Effect == EffectKind.OverloadDamage && unit.Overload == 0)
                 return Array.Empty<Position>();
             if ((card.Effect is EffectKind.MaxCountdownUp or EffectKind.CountdownUp) && unit.Period == 0)
                 return Array.Empty<Position>();
@@ -256,7 +460,7 @@ namespace Frostline
         public int PreviewCardDamage(Card card, Unit victim = null)
         {
             int damage = victim == null ? card.Damage : card.DamageAgainst(victim);
-            return damage + (card.IsJunk ? JunkAttackBonus : 0) +
+            return damage + CardDamageBonus(card) +
                 (card.Technique?.JunkAction == JunkOperation.DoubleAndStrike ? hand.Count(value => value.IsJunk) : 0);
         }
 
@@ -264,10 +468,9 @@ namespace Frostline
         {
             Unit victim = At(target);
             int frenzy = victim.Frenzy;
-            victim.Health = 0;
-            RemoveIfDefeated(target, victim);
+            foreach (var beat in Sacrifice(target))
+                yield return beat;
             Notice = $"已吞噬{victim.Type.Name}。";
-            yield return new BattleBeat(target, target, BattleEffect.Status, "吞噬");
             foreach (var beat in ApplyToRandomUnit(target, false, EffectKind.Frenzy, frenzy))
                 yield return beat;
         }
@@ -303,6 +506,14 @@ namespace Frostline
             var rules = card.Technique;
             SpendJunk(rules.JunkCost);
             GenerateJunk(rules.JunkOutput);
+            if (rules.Target == CardTarget.EmptySlot)
+            {
+                UnitType summoned = card.Effect == EffectKind.MimicEnemy ? MimicEnemy(card.Amount) : rules.SummonUnit;
+                if (summoned != null)
+                    foreach (var beat in SummonUnit(anchor, summoned))
+                        yield return beat;
+                yield break;
+            }
             if (rules.Target == CardTarget.SacrificeAlly)
             {
                 foreach (var beat in SacrificeAlly(anchor))
@@ -311,8 +522,9 @@ namespace Frostline
             }
             if (rules.Target is CardTarget.RandomAlly or CardTarget.RandomEnemy)
             {
-                foreach (var beat in ApplyToRandomUnit(anchor, rules.Target == CardTarget.RandomEnemy, card.Effect, card.Amount))
-                    yield return beat;
+                for (int hit = 0; hit < rules.Hits + card.BonusHits && Phase != BattlePhase.Lost; hit++)
+                    foreach (var beat in ApplyToRandomUnit(anchor, rules.Target == CardTarget.RandomEnemy, card.Effect, card.Amount))
+                        yield return beat;
                 if (rules.OpponentBlock > 0)
                     foreach (var beat in ApplyToRandomUnit(anchor, true, EffectKind.Block, rules.OpponentBlock))
                         yield return beat;
@@ -320,12 +532,6 @@ namespace Frostline
             }
             if (rules.Target == CardTarget.None)
             {
-                if (rules.JunkPerTurn > 0)
-                {
-                    JunkPerTurn += rules.JunkPerTurn;
-                    Notice = $"已装备{card.Name}，每回合垃圾 +{JunkPerTurn}。";
-                    yield return new BattleBeat(anchor, anchor, BattleEffect.Status, "装备");
-                }
                 if (card.Effect == EffectKind.Draw)
                 {
                     int before = hand.Count;
@@ -371,6 +577,8 @@ namespace Frostline
                         int before = victim.Health;
                         var impact = Hit(anchor, target, rules.JunkAction == JunkOperation.DoubleAndStrike
                             ? card.Damage + junkBefore.Length : PreviewCardDamage(card, victim), card.Name);
+                        if (rules.KillIsSacrifice && target.Enemy && victim.Health == 0)
+                            pendingSacrifices++;
                         yield return impact;
                         foreach (var beat in ResolveBlockReaction(impact))
                             yield return beat;
@@ -392,6 +600,9 @@ namespace Frostline
                     }
                     if (card.Effect != EffectKind.None)
                         foreach (var beat in ApplyEffect(anchor, target, card.Effect, card.Amount))
+                            yield return beat;
+                    if (rules.JunkPerTurn > 0)
+                        foreach (var beat in ApplyEffect(anchor, target, EffectKind.PermanentJunk, rules.JunkPerTurn))
                             yield return beat;
                     if (rules.Secondary != EffectKind.None)
                         foreach (var beat in ApplyEffect(anchor, target, rules.Secondary, rules.SecondaryAmount))
@@ -439,16 +650,85 @@ namespace Frostline
                     yield return beat;
         }
 
+        // Runs once per unit at the end of every turn. A kill counts as a sacrifice because the player's own card caused it.
+        private IEnumerable<BattleBeat> ResolveDelayedDamage(Position pos, Unit unit)
+        {
+            int amount = unit.DamageThisTurn;
+            unit.DamageThisTurn = unit.DamageNextTurn;
+            unit.DamageNextTurn = 0;
+            if (amount <= 0)
+                yield break;
+            var impact = Hit(pos, pos, amount, Effects.Name(EffectKind.DelayedDamage));
+            yield return impact;
+            foreach (var reaction in ResolveBlockReaction(impact))
+                yield return reaction;
+            foreach (var burst in CheckOverload(pos))
+                yield return burst;
+        }
+
+        // The ally and the front enemy across from it each gain the overload, then both double it. Bursts are checked after both change.
+        private IEnumerable<BattleBeat> MutualOverload(Position source, Position ally, int amount)
+        {
+            if (At(ally) == null)
+                yield break;
+            Position? foe = Front(!ally.Enemy, ally.Row) ?? Front(!ally.Enemy, 1 - ally.Row);
+            Position[] marked = foe.HasValue ? new[] { foe.Value, ally } : new[] { ally };
+            foreach (Position pos in marked)
+            {
+                Unit unit = At(pos);
+                int before = unit.Overload;
+                unit.Overload = (before + amount) * 2;
+                Notice = $"{unit.Type.Name} · 过载 {before} → {unit.Overload}";
+                yield return new BattleBeat(source, pos, BattleEffect.Status, $"过载 {before}→{unit.Overload}");
+            }
+            foreach (Position pos in marked)
+                foreach (var burst in CheckOverload(pos))
+                    yield return burst;
+        }
+
+        // Damage equal to the target's overload, then the overload halves (rounded down) before the burst check.
+        private IEnumerable<BattleBeat> DischargeOverload(Position source, Position target)
+        {
+            Unit unit = At(target);
+            if (unit == null || unit.Overload <= 0)
+                yield break;
+            string name = Effects.Name(EffectKind.OverloadDamage);
+            yield return new BattleBeat(source, target, BattleEffect.Windup, name, cardStrike: true);
+            var impact = Hit(source, target, unit.Overload, name);
+            yield return impact;
+            foreach (var reaction in ResolveBlockReaction(impact))
+                yield return reaction;
+            if (At(target) != unit || Phase == BattlePhase.Lost)
+                yield break;
+            int before = unit.Overload;
+            unit.Overload /= 2;
+            Notice = $"{unit.Type.Name} · 过载 {before} → {unit.Overload}";
+            yield return new BattleBeat(source, target, BattleEffect.Status, $"过载 {before}→{unit.Overload}");
+            foreach (var burst in CheckOverload(target))
+                yield return burst;
+            foreach (var reaction in ResolveItemHit(target, false))
+                yield return reaction;
+        }
+
         private void DiscardAfterUse(Card card)
         {
-            if (card.Action == CardAction.Deploy || card.Action == CardAction.Copy || card.Technique?.Consume == true ||
-                card.Technique?.JunkPerTurn is > 0)
+            if (card.Action == CardAction.Deploy)
+                return;
+            if (card.Action == CardAction.Copy || card.Technique?.Consume == true)
+            {
+                exhausted.Add(card);
+                return;
+            }
+            if (card.Technique?.JunkPerTurn is > 0)
                 return;
             if (card.Technique?.Uses is > 0)
             {
-                if (card.UsesRemaining <= 1)
-                    return;
                 card = card.SpendUse();
+                if (card.UsesRemaining <= 0)
+                {
+                    exhausted.Add(card);
+                    return;
+                }
             }
             if (card.Technique?.GainAfterUse is int bonus && bonus > 0)
                 card = card.WithDamage(card.Damage + bonus);

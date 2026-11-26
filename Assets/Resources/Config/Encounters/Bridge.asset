@@ -33,6 +33,4 @@ MonoBehaviour:
     - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
       row: 2
   pendantReward: 3
-  rewardCards:
-  - {fileID: 11400000, guid: 495dbac7f18550f7854135bfd32eab13, type: 2}
-  - {fileID: 11400000, guid: 322a003c716c53cd8f8cb0b22347f465, type: 2}
+  rewardCards: []

@@ -75,8 +75,8 @@ namespace Frostline
                     Mathf.Max(1, site.reinforcementInterval), site.pendantReward, site.rewardCards.Select(ReadCard).ToArray(), waves);
             }
 
-            bool useFactions = factions.Length > 0;
-            if ((!useFactions && loadouts.Length == 0) || companions.Length == 0 || stages.Length == 0 ||
+            bool useFactions = workbook.Factions.Count > 0 || factions.Length > 0;
+            if ((!useFactions && (loadouts.Length == 0 || companions.Length == 0)) || stages.Length == 0 ||
                 stages.Any(stage => stage.encounters.Length == 0))
                 throw new InvalidOperationException("The expedition must contain loadouts, companions, encounters and starting supplies.");
 
@@ -101,9 +101,13 @@ namespace Frostline
                 return result;
             }
 
+            // The 部族 sheet of the design workbook defines the factions. Faction assets remain as a fallback.
+            bool sheetFactions = workbook.Factions.Count > 0;
+            var factionNames = sheetFactions ? workbook.Factions.Select(faction => faction.Name).ToArray()
+                : factions.Where(faction => faction != null).Select(faction => faction.displayName).ToArray();
             var extraRewards = additions.Where(entry => entry.Placement == "战后奖励").ToArray();
             foreach (var entry in extraRewards)
-                if (entry.Group != "通用" && !factions.Any(faction => faction != null && faction.displayName == entry.Group))
+                if (entry.Group != "通用" && !factionNames.Contains(entry.Group))
                     throw entry.Source.Error($"奖励分类「{entry.Group}」须为通用或当前部族名称。");
 
             IEnumerable<Card> ExtraPool(string group, bool recruits) => extraRewards
@@ -115,23 +119,25 @@ namespace Frostline
             if (hasRecruitment && shared.Length == 0)
                 throw new InvalidOperationException("Recruitment requires a shared companion.");
             var exclusive = new HashSet<Card>(shared);
-            var routeFactions = factions.Select(config =>
+            var routeFactions = sheetFactions
+                ? workbook.BuildFactions(new[] { junkCard, stickyFruit }.Where(card => card != null).Select(card => card.name))
+                : factions.Select(config =>
+                {
+                    if (config == null)
+                        throw new InvalidOperationException("A faction reference is missing.");
+                    return new ExpeditionFaction(config.displayName, config.strategy, config.leaders.Select(ReadUnit).Distinct().ToArray(),
+                        config.startingDeck.Select(ReadCard).ToArray(), config.startingSupplies.Select(ReadCard).ToArray(),
+                        ReadRecruits(config.exclusiveRecruits).Concat(ExtraPool(config.displayName, true)).Distinct().ToArray(),
+                        ReadCard(config.signatureReward), config.openingCompanions.Select(ReadUnit).ToArray(),
+                        config.itemRewards.Select(ReadCard).Concat(ExtraPool(config.displayName, false)).Distinct().ToArray());
+                }).ToArray();
+            foreach (var faction in routeFactions)
             {
-                if (config == null)
-                    throw new InvalidOperationException("A faction reference is missing.");
-                var leaders = config.leaders.Select(ReadUnit).Distinct().ToArray();
-                var recruits = ReadRecruits(config.exclusiveRecruits)
-                    .Concat(ExtraPool(config.displayName, true)).Distinct().ToArray();
-                if (leaders.Length < 3 || config.startingDeck.Length == 0 ||
-                    (hasRecruitment && recruits.Length < 2))
-                    throw new InvalidOperationException($"{config.name} needs three leaders, a deck and two exclusive recruits for recruitment.");
-                if (recruits.Any(card => !exclusive.Add(card)))
-                    throw new InvalidOperationException($"{config.name} uses an exclusive recruit that already belongs to another pool.");
-                return new ExpeditionFaction(config.displayName, config.strategy, leaders,
-                    config.startingDeck.Select(ReadCard).ToArray(), config.startingSupplies.Select(ReadCard).ToArray(),
-                    recruits, ReadCard(config.signatureReward), config.openingCompanions.Select(ReadUnit).ToArray(),
-                    config.itemRewards.Select(ReadCard).Concat(ExtraPool(config.displayName, false)).Distinct().ToArray());
-            }).ToArray();
+                if (faction.Leaders.Count < 3 || faction.StartingDeck.Count == 0 || (hasRecruitment && faction.ExclusiveRecruits.Count < 2))
+                    throw new InvalidOperationException($"{faction.Name} needs three leaders, a deck and two exclusive recruits for recruitment.");
+                if (faction.ExclusiveRecruits.Any(card => !exclusive.Add(card)))
+                    throw new InvalidOperationException($"{faction.Name} uses an exclusive recruit that already belongs to another pool.");
+            }
 
             return new DispatchRoute(Array.Empty<StartingLoadout>(), startingCompanions, routeStages, routeFactions, shared,
                 catalog: catalogCards.Select(ReadEntry).Concat(additions)

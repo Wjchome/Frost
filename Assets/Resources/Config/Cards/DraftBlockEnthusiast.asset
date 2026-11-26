@@ -21,6 +21,7 @@ MonoBehaviour:
   period: 10
   frenzy: 1
   pattern: 5
+  counterattack: 1
   trigger: 4
   abilityEffect: 36
   abilityAmount: 1

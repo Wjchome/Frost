@@ -18,6 +18,7 @@ namespace Frostline
         [Min(1)] public int frenzy = 1;
         public AttackPattern pattern;
         public bool resistSnow;
+        public bool counterattack;
         public EffectTrigger trigger;
         public EffectKind abilityEffect;
         [Min(0)] public int abilityAmount;

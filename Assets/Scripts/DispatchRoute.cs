@@ -135,6 +135,9 @@ namespace Frostline
             CaptainCard = new Card(Loadout.Captain).Recruit();
             foreach (Card card in Loadout.Deck)
                 deck.Add(card.Recruit());
+            // A faction with a single starting companion skips the companion choice.
+            if (Faction != null && OpeningCompanions.Count == 1)
+                CompanionCard = new Card(OpeningCompanions[0]).Recruit();
             return true;
         }
 
@@ -193,7 +196,11 @@ namespace Frostline
             {
                 if (Faction?.Items.Count > 0)
                     return Array.AsReadOnly(DrawChoices(Faction.Items, 2).Concat(DrawChoices(sharedItems, 1)).ToArray());
-                return Array.AsReadOnly(new[] { Loadout.Reward }.Concat(site.RewardCards).ToArray());
+                if (Loadout.Reward != null)
+                    return Array.AsReadOnly(new[] { Loadout.Reward }.Concat(site.RewardCards).ToArray());
+                if (site.RewardCards.Count > 0)
+                    return site.RewardCards;
+                return Array.AsReadOnly(DrawChoices(sharedItems, 3).ToArray());
             }
 
             var candidates = DrawChoices(Faction.ExclusiveRecruits, 2).Concat(DrawChoices(sharedRecruits, 1));

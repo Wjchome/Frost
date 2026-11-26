@@ -70,6 +70,8 @@
     background-color: rgba(17, 31, 38, 0.93); border-color: #638481;
 }
 .top-button.order-active { background-color: #624f36; color: #fff0bd; border-color: #dfb968; }
+.button.gm-button { background-color: #423a28; border-color: #b79965; color: #f4ddb0; }
+.button.gm-button:hover { background-color: #665332; border-color: #e7be7e; }
 .arena { flex-grow: 1; flex-basis: 0; min-height: 0; justify-content: center; }
 .side-labels { flex-direction: row; flex-shrink: 0; align-self: center; width: 88%; margin-bottom: 4px; padding: 0 20px; }
 .side-label {
@@ -160,6 +162,9 @@
 .ability-icon { background-image: url("../CardArt/icon_snow.png"); background-color: #425c61; border-radius: 3px; }
 .resist-icon { background-color: #536b69; border-radius: 3px; }
 .ability-value.silenced { opacity: 0.44; }
+.ability-value.recycle-draw { flex-direction: column; align-self: stretch; }
+.ability-value.recycle-draw .ability-icon { display: none; }
+.ability-value.recycle-draw .ability-amount { align-self: stretch; white-space: normal; -unity-text-align: middle-center; }
 .unit-vitals { flex-direction: row; align-items: stretch; flex-shrink: 0; height: 22px; margin-bottom: 3px; }
 .health-track {
     flex-grow: 1; min-width: 22px; position: relative; overflow: hidden;
@@ -251,6 +256,13 @@
     background-color: #28536a; color: #e3f6fa; font-size: 12px;
     -unity-font-style: bold; -unity-text-align: middle-center;
 }
+.terrain-chip {
+    position: absolute; left: 2px; right: 2px; bottom: 41px;
+    min-height: 16px; padding: 1px 2px; border-radius: 4px;
+    font-size: 11px; color: #e4f2d4; background-color: rgba(28, 66, 47, 0.95);
+    -unity-text-align: middle-center; white-space: normal;
+}
+.terrain-chip.terrain-preview { color: #fff3bc; background-color: #514b25; }
 .forecast-chip.forecast-danger { color: #ffe3ce; border-color: #df9a83; background-color: #67384a; }
 .forecast-chip.forecast-gain { color: #e4f9d8; border-color: #9accaa; background-color: #335d55; }
 .burst {
@@ -278,6 +290,12 @@
 .slot.drop-valid .face-art { border-color: #b9efd0; }
 .slot.drop-invalid.empty, .slot.drop-invalid.unit-face { border-color: #e29691; }
 .slot.motion-source, .card.motion-source { opacity: 0.30; }
+.slot.deployment-preview-slot > .unit-content,
+.slot.deployment-preview-slot > .empty-mark { visibility: hidden; }
+.slot > .deployment-preview-face {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    border-color: #b9efd0; background-color: #294d4a;
+}
 .strike-trail { position: absolute; background-color: #fff8ce; rotate: 42deg; border-radius: 6px; }
 .notice-bar {
     min-height: 34px; flex-shrink: 0; align-self: center; width: 88%;
@@ -391,6 +409,22 @@
     border-top-width: 3px; border-top-color: #bb935d;
 }
 .deck-heading { flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.deck-heading-actions { flex-direction: row; align-items: center; }
+.deck-heading-actions .gm-button { margin-right: 8px; }
+.gm-menu { flex-grow: 1; align-items: flex-start; padding-top: 12px; }
+.button.gm-tool {
+    width: 100%; min-height: 95px; margin-bottom: 12px; padding: 15px 20px;
+    align-items: flex-start; justify-content: center; background-color: #234148; border-color: #63847e;
+}
+.button.gm-tool:hover { background-color: #335d66; border-color: #f1ce8b; }
+.gm-tool-title { font-size: 23px; color: #ffe6b0; -unity-font-style: bold; }
+.gm-tool-description { font-size: 14px; color: #c4dedc; margin-top: 5px; white-space: normal; }
+.gm-enemy-placement { flex-shrink: 0; margin-bottom: 10px; }
+.gm-placement-label { font-size: 13px; color: #c4dedc; margin-bottom: 5px; }
+.gm-enemy-slots { flex-direction: row; flex-wrap: wrap; }
+.button.gm-enemy-slot { flex-grow: 1; flex-basis: 0; min-width: 110px; min-height: 34px; margin-right: 5px; }
+.button.gm-enemy-slot.current { background-color: #3b5a59; color: #fff0ca; border-color: #dbbb7f; }
+.gm-enemy-view .deck-card-face { height: 175px; }
 .deck-navigation { flex-direction: row; }
 .button.deck-tab { margin-right: 7px; min-height: 34px; background-color: #1c3b48; border-color: #557781; }
 .button.deck-tab:hover { background-color: #365961; }

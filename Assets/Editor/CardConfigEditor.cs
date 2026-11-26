@@ -8,10 +8,10 @@ namespace Frostline
     {
         public override void OnInspectorGUI()
         {
-            EditorGUILayout.HelpBox("运行时按这个资产的名称查找 Excel 中的卡牌 ID。卡牌数据请在 CardWorkbook.xlsx 里编辑。",
+            EditorGUILayout.HelpBox("运行时按这个资产的名称查找卡牌 ID。卡牌数据请在 Docs/Design/卡牌设计原稿.xlsx 的「卡牌」表里编辑。",
                 MessageType.Info);
-            if (GUILayout.Button("在 Project 中定位卡牌配置表"))
-                EditorGUIUtility.PingObject(AssetDatabase.LoadMainAssetAtPath("Assets/Resources/Config/CardWorkbook.xlsx"));
+            if (GUILayout.Button("打开卡牌设计原稿"))
+                CardWorkbookTools.OpenDesignWorkbook();
             using var legacy = new EditorGUI.DisabledScope(true);
             serializedObject.Update();
             Draw("displayName", "卡名");
@@ -27,11 +27,12 @@ namespace Frostline
                 Draw("frenzy", "攻击次数");
                 Draw("pattern", "攻击方式");
                 Draw("resistSnow", "抗雪球");
+                Draw("counterattack", "反击");
                 Draw("trigger", "能力触发时机");
                 Draw("abilityEffect", "能力效果");
                 Draw("abilityAmount", "能力数值");
                 var effect = (EffectKind)serializedObject.FindProperty("abilityEffect").enumValueIndex;
-                if (effect is EffectKind.MaxCountdownUp or EffectKind.HurtForFrenzy)
+                if (effect is EffectKind.MaxCountdownUp or EffectKind.HurtForFrenzy or EffectKind.SnowAndAttackUp)
                     Draw("abilitySecondaryAmount", "第二效果数值");
             }
             else if (action == CardAction.ApplyEffect)

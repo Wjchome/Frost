@@ -13,9 +13,7 @@ MonoBehaviour:
   m_Name: ExpeditionConfig
   m_EditorClassIdentifier:
   loadouts: []
-  factions:
-  - {fileID: 11400000, guid: 0d4515075bb854e7a4588fb478887e46, type: 2}
-  - {fileID: 11400000, guid: c25909602c105a2887ac8202448395c1, type: 2}
+  factions: []
   sharedRecruits:
   - {fileID: 11400000, guid: 0320019f87c9589794b174b8fcd6d4f2, type: 2}
   - {fileID: 11400000, guid: 1bc26daa09c657778b7f2f2ac943940f, type: 2}
@@ -38,7 +36,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: da62278ce3d35404baad91fec21082ba, type: 2}
   - {fileID: 11400000, guid: 1b18a307ab5459c3a744e6c3cc9a573a, type: 2}
   - {fileID: 11400000, guid: ad93d2febf2f5225ab810d74577bdfdc, type: 2}
-  - {fileID: 11400000, guid: e39677a06cbb52edbd77f4c03226772f, type: 2}
   - {fileID: 11400000, guid: ad9131b73a3b52d59cb0c8baa31f1049, type: 2}
   - {fileID: 11400000, guid: b98e5876c4dd579097c634881107db16, type: 2}
   - {fileID: 11400000, guid: b6dc41b5f9d55d48861593c86fd660f2, type: 2}
@@ -122,19 +119,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 487eaff0423549799f6e8c1b48edb5e5, type: 2}
   - {fileID: 11400000, guid: c2a9830f6809409ba3e8f9e79dcf0980, type: 2}
   - {fileID: 11400000, guid: b5f86cb343bc4d97b761f1cc2c15424f, type: 2}
-  - {fileID: 11400000, guid: f5d206042b214f03b7ae06358cda5885, type: 2}
   - {fileID: 11400000, guid: 787982c5ea7e40a580175b83e58f5659, type: 2}
   - {fileID: 11400000, guid: 62103054b9ea43b48dd0d727b7f0339b, type: 2}
   - {fileID: 11400000, guid: c460446742b4434b975944c2019f3803, type: 2}
   - {fileID: 11400000, guid: f407e732e4a9471fbd11587f19eb080f, type: 2}
   - {fileID: 11400000, guid: 80e6e46bfd2940bf9f000747082c2ecb, type: 2}
   - {fileID: 11400000, guid: a1e58fedb61245f483cd56bea1a56cd8, type: 2}
+  - {fileID: 11400000, guid: e39677a06cbb52edbd77f4c03226772f, type: 2}
+  - {fileID: 11400000, guid: f5d206042b214f03b7ae06358cda5885, type: 2}
   stickyFruit: {fileID: 11400000, guid: b1628b175dfc5689af45b62eef2e1559, type: 2}
   junkCard: {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
-  companions:
-  - {fileID: 11400000, guid: 1ba18876cd2657f7a54c10a1f345b125, type: 2}
-  - {fileID: 11400000, guid: 28063c2f25f45d678153db954fe4931b, type: 2}
-  - {fileID: 11400000, guid: 12869b3b5773578cbe99d458ed9e91ec, type: 2}
+  companions: []
   stages:
   - title: "选择低级关卡"
     recruitCompanions: 1
