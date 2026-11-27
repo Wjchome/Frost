@@ -389,6 +389,10 @@ namespace Frostline
         {
             Unit unit = At(anchor);
             CardTechnique rules = card.Technique;
+            if (rules.Target == CardTarget.Tile)
+                return new[] { anchor };
+            if (rules.Target == CardTarget.AllTiles)
+                return TurnOrder().ToArray();
             if (rules.Target == CardTarget.None)
                 return !anchor.Enemy && unit != null ? new[] { anchor } : Array.Empty<Position>();
             if (rules.Target == CardTarget.EmptySlot)
@@ -408,6 +412,8 @@ namespace Frostline
             if (card.Effect == EffectKind.EffectBonus && unit.Type.Ability.Effect == EffectKind.None)
                 return Array.Empty<Position>();
             if (card.Effect == EffectKind.OverloadDamage && unit.Overload == 0)
+                return Array.Empty<Position>();
+            if ((card.Effect is EffectKind.PoisonBurst or EffectKind.GroundPoison or EffectKind.PoisonTreatment) && unit.Poison == 0)
                 return Array.Empty<Position>();
             if ((card.Effect is EffectKind.MaxCountdownUp or EffectKind.CountdownUp) && unit.Period == 0)
                 return Array.Empty<Position>();
@@ -548,6 +554,13 @@ namespace Frostline
                 yield break;
             }
 
+            if (card.Effect == EffectKind.TerrainSwap)
+            {
+                foreach (var beat in SwapTerrain(anchor))
+                    yield return beat;
+                yield break;
+            }
+
             var junkBefore = rules.JunkAction == JunkOperation.DoubleAndStrike
                 ? hand.Where(value => value.IsJunk).ToArray() : Array.Empty<Card>();
             for (int hit = 0; hit < rules.Hits + card.BonusHits && Phase != BattlePhase.Lost; hit++)
@@ -565,6 +578,9 @@ namespace Frostline
                     targets = new[] { targets[RollTarget(targets.Count)] };
                 if (targets.Count == 0)
                     yield break;
+                if (IsTerrainPlacement(card.Effect) || IsTerrainPlacement(rules.Secondary) || IsTerrainPlacement(rules.ThirdEffect))
+                    foreach (var beat in PlaceTechniqueTerrain(card, anchor, targets))
+                        yield return beat;
                 if (card.HasAttack)
                     yield return new BattleBeat(anchor, targets[0], BattleEffect.Windup, card.Name, targets, cardStrike: true);
                 foreach (Position target in targets)
@@ -598,16 +614,16 @@ namespace Frostline
                         foreach (var beat in ResolveItemHit(target, card.IsJunk))
                             yield return beat;
                     }
-                    if (card.Effect != EffectKind.None)
+                    if (card.Effect != EffectKind.None && !IsTerrainPlacement(card.Effect))
                         foreach (var beat in ApplyEffect(anchor, target, card.Effect, card.Amount))
                             yield return beat;
                     if (rules.JunkPerTurn > 0)
                         foreach (var beat in ApplyEffect(anchor, target, EffectKind.PermanentJunk, rules.JunkPerTurn))
                             yield return beat;
-                    if (rules.Secondary != EffectKind.None)
+                    if (rules.Secondary != EffectKind.None && !IsTerrainPlacement(rules.Secondary))
                         foreach (var beat in ApplyEffect(anchor, target, rules.Secondary, rules.SecondaryAmount))
                             yield return beat;
-                    if (rules.ThirdEffect != EffectKind.None)
+                    if (rules.ThirdEffect != EffectKind.None && !IsTerrainPlacement(rules.ThirdEffect))
                         foreach (var beat in ApplyEffect(anchor, target, rules.ThirdEffect, rules.ThirdAmount))
                             yield return beat;
                     if (rules.HealSchedule is { Length: > 0 } && At(target) is Unit scheduled)

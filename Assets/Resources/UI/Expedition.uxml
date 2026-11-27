@@ -51,10 +51,6 @@
           <ui:Instance name="upper-row" template="FormationRow" class="formation-row" />
           <ui:Instance name="lower-row" template="FormationRow" class="formation-row" />
         </ui:VisualElement>
-        <ui:VisualElement class="notice-bar">
-          <ui:Label name="notice" class="notice" />
-          <ui:Label name="hint" class="hint" />
-        </ui:VisualElement>
       </ui:VisualElement>
       <ui:VisualElement class="tray">
         <ui:VisualElement class="piles">

@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace Frostline
 {
     [RequireComponent(typeof(UIDocument), typeof(AudioSource))]
-    public sealed class DispatchBoard : MonoBehaviour
+    public sealed partial class DispatchBoard : MonoBehaviour
     {
         private enum DeckPage { Roster, Draw, Discard, Codex, GameMaster, Exhaust, GameMasterMenu, GameMasterEnemies }
 
@@ -34,7 +34,7 @@ namespace Frostline
         private readonly Dictionary<string, AudioClip> audioClips = new();
         private AudioSource audioSource;
         private bool showingTitle, showingGuide, soundEnabled;
-        private Label locationTitle, turn, wave, waveUnits, objective, notice, hint, drawCount, discardCount, exhaustCount;
+        private Label locationTitle, turn, wave, waveUnits, objective, drawCount, discardCount, exhaustCount;
         private Label resultEyebrow, resultTitle, resultDetail, redrawNote, junkPerTurnNote;
         private Button redraw, recall, restart, orderButton, changeLoadout;
         private Button inspectDeck, inspectDraw, inspectDiscard, inspectExhaust, routeDeck, rosterTab, drawTab, discardTab, exhaustTab;
@@ -104,8 +104,6 @@ namespace Frostline
             turn = screen.Q<Label>("turn");
             wave = screen.Q<Label>("wave");
             waveUnits = screen.Q<Label>("wave-units");
-            notice = screen.Q<Label>("notice");
-            hint = screen.Q<Label>("hint");
             drawCount = screen.Q<Label>("draw-count");
             discardCount = screen.Q<Label>("discard-count");
             resultEyebrow = screen.Q<Label>("result-eyebrow");
@@ -133,6 +131,7 @@ namespace Frostline
             foreach (Button button in new[] { redraw, recall, restart, orderButton })
                 button.focusable = false;
             BindDeckView();
+            BindCardInspector();
 
             screen.RegisterCallback<PointerDownEvent>(OnPointerDown, TrickleDown.TrickleDown);
             screen.RegisterCallback<PointerMoveEvent>(OnPointerMove, TrickleDown.TrickleDown);
@@ -240,6 +239,7 @@ namespace Frostline
 
         private void Update()
         {
+            UpdateCardScale();
             if (deckPage == DeckPage.Codex || IsGameMasterPage)
             {
                 if (Input.GetKeyDown(KeyCode.Escape) && IsGameMasterTool)
@@ -574,7 +574,7 @@ namespace Frostline
 
         private void Render()
         {
-            Paint(background, game?.Location.Landscape ?? "Art/Expedition/Cover");
+            Paint(background, game?.Location.Landscape ?? "Art/Expedition/Cover-v2-4c39da");
             titleScreen.style.display = showingTitle ? DisplayStyle.Flex : DisplayStyle.None;
             battleHud.style.display = game == null ? DisplayStyle.None : DisplayStyle.Flex;
             if (showingTitle)
@@ -598,7 +598,6 @@ namespace Frostline
                 : $"第 {game.Wave} 波  ·  增援 {game.Reinforcements} 拍";
             waveUnits.style.display = game.NextWave.Count == 0 ? DisplayStyle.None : DisplayStyle.Flex;
             waveUnits.text = string.Join("  +  ", game.NextWave.Select(enemy => enemy.Unit.Name));
-            notice.text = game.Notice;
             drawCount.text = game.DrawCount.ToString();
             discardCount.text = game.DiscardCount.ToString();
             exhaustCount.text = game.ExhaustCount.ToString();
@@ -630,6 +629,7 @@ namespace Frostline
 
             showOrder = !showOrder;
             ApplyOrder();
+            UpdateCardInspector();
         }
 
         private void ApplyOrder()
@@ -700,7 +700,7 @@ namespace Frostline
             Button slot = slots[position];
             slot.AddToClassList("deployment-preview-slot");
             VisualElement face = Element("deployment-preview-face");
-            unit.TerrainAttack = game.TerrainAttackAt(position, unit);
+            game.ApplyTerrainStats(position, unit);
             DrawUnitFace(face, unit);
             AddForecastMark(slot, face);
         }
@@ -946,13 +946,11 @@ namespace Frostline
                 randomTarget = current.Pattern == AttackPattern.Aimless;
             }
 
-            bool any = false;
             foreach (var entry in slots)
             {
                 Position pos = entry.Key;
                 bool valid = cardIndex >= 0 ? game.CanPlay(cardIndex, pos)
                     : selectedUnit.HasValue && game.CanMove(selectedUnit.Value, pos);
-                any |= valid;
                 entry.Value.EnableInClassList("target", valid);
                 entry.Value.EnableInClassList("affected", affected.Contains(pos));
                 entry.Value.EnableInClassList("possible", randomTarget && affected.Contains(pos));
@@ -973,25 +971,11 @@ namespace Frostline
             bool canRecall = selectedUnit.HasValue && game.CanRecall(selectedUnit.Value);
             recall.SetEnabled(canRecall);
             recall.EnableInClassList("target", canRecall);
-            bool handTarget = selectedCard >= 0 && game.CanPlayOnHand(selectedCard, hoveredCard);
-            if (selectedCard >= 0 && Enumerable.Range(0, cards.Count).Any(i => game.CanPlayOnHand(selectedCard, i)))
-                any = true;
-            if (handTarget)
-                cardIndex = selectedCard;
-            hint.text = game.Phase == BattlePhase.Resolving ? "结算中…" :
-                cardIndex >= 0 ? any ? CardDetails(game.Hand[cardIndex],
-                    hoveredSlot.HasValue && game.CanPlay(cardIndex, hoveredSlot.Value) ? current : null) : "当前没有合法目标。" :
-                selectedUnit.HasValue ? canRecall ? "选择己方位置换位，或拖到收回队员。换位和收回均免费。"
-                    : game.At(selectedUnit.Value)?.Type.Summon == true ? "召唤单位不能召回，可以免费换位。" : "选择己方位置免费换位。" :
-                current != null ? UnitDetails(current) :
-                game.Opening ? "将戴冠的牌拖到己方站位，开局部署不消耗回合。" : "悬停预览目标 · 空格敲换牌铃";
-            TerrainTile tile = hoveredSlot.HasValue ? game.TerrainAt(hoveredSlot.Value) : default;
-            if (tile.HasEffects)
-                hint.text += $" · 脚下格子 {tile.Describe()}";
             ApplyOrder();
+            UpdateCardInspector();
         }
 
-        private string CardDetails(Card card, Unit target = null)
+        private string CardDetails(Card card, Unit target = null, bool includeRules = true)
         {
             if (card.Unit != null)
                 return card.Description + UnitDetails(DeploymentPreview(card, leader: false));
@@ -1004,7 +988,17 @@ namespace Frostline
             }
             if (target != null && card.Effect == EffectKind.OverloadDamage)
                 preview = $" 本次伤害 {Expedition.PreviewHealthDamage(target, target.Overload)}，过载 {target.Overload} → {target.Overload / 2}。";
-            return DescribeCard(card, game != null && game.Hand.Contains(card) ? game : null) + Effects.Rule(card.Effect) + preview;
+            if (target != null)
+                preview = card.Effect switch
+                {
+                    EffectKind.PoisonBurst => $" 本次伤害 {Expedition.PreviewHealthDamage(target, target.Poison)}。",
+                    EffectKind.PoisonTreatment => $" 本次移除 {target.PoisonTreatmentAmount} 层中毒，失去等量生命。",
+                    EffectKind.GroundPoison => $" 本次转移 {target.Poison} 层中毒。",
+                    EffectKind.HalfCounterattack => $" 当前攻击对应的反伤为 {target.ThornsAt(card.Amount)}。",
+                    _ => preview
+                };
+            return DescribeCard(card, game != null && game.Hand.Contains(card) ? game : null) +
+                (includeRules ? string.Join(" ", CardStatusView.Read(card).Select(status => status.Rule)) : "") + preview;
         }
 
         private static string DescribeCard(Card card, Expedition battle) =>
@@ -1013,17 +1007,18 @@ namespace Frostline
         private static string UnitDetails(Unit unit)
         {
             UnitType type = unit.Type;
-            string pattern = unit.Period > 0 ? Expedition.PatternName(unit.Pattern) : type.Counterattack ? "仅反击" : "不主动行动";
+            string pattern = unit.Period > 0 ? Expedition.PatternName(unit.Pattern) : unit.HasCounterattack ? "仅反击" : "不主动行动";
             if (unit.Pattern == AttackPattern.Aimless)
                 pattern += "（从高亮目标随机选一名）";
             if (type.Pattern == AttackPattern.Support)
                 pattern += "（倒计时归零，给予同排最前方的其他友军）";
             string frenzy = unit.Frenzy > 1 ? $" · 狂热 ×{unit.Frenzy}" : "";
-            string counterattack = type.Counterattack
-                ? $" · 受单位攻击后存活时，按当前攻击力 {unit.Attack} 反击{(unit.Pattern == AttackPattern.AllEnemies ? "全体敌军" : "攻击者")}，保留当前倒计时"
+            string poisonAttack = unit.PoisonOnAttack > 0 ? $" · 每次攻击后给命中的目标施加 {unit.PoisonOnAttack} 层中毒" : "";
+            string counterattack = unit.HasCounterattack
+                ? $" · 受单位攻击后存活时，以 {unit.CounterattackPower} 攻击反击{(unit.Pattern == AttackPattern.AllEnemies ? "全体敌军" : "攻击者")}，保留当前倒计时"
                 : "";
-            string ability = type.Ability.Effect == EffectKind.None ? "" :
-                " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern);
+            string ability = (type.Ability.Effect == EffectKind.None ? "" :
+                " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern)) + poisonAttack;
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
             string summon = type.Summon ? " · 召唤：不能召回，阵亡后回到弃牌堆并恢复满生命" : "";
             string enemySide = type.DeployOnEnemy ? " · 部署在敌方空位，算作敌方单位，必须击倒才能过关" : "";
@@ -1165,6 +1160,7 @@ namespace Frostline
                         if (route.ChooseEncounter(index))
                             LoadBattle();
                     });
+                    option.AddToClassList("encounter-choice");
                     var preview = Element("site-preview");
                     Paint(preview, site.Landscape);
                     option.Insert(0, preview);
@@ -1333,6 +1329,7 @@ namespace Frostline
 
             ClearDrag();
             StopReturn();
+            DismissCardInspector();
             deckPage = page;
             deckOverlay.style.display = DisplayStyle.Flex;
             deckGrid.Clear();
@@ -1869,6 +1866,8 @@ namespace Frostline
         {
             if (card.Unit != null)
             {
+                view.EnableInClassList("hostile", route?.Catalog.Any(entry =>
+                    entry.Group == "敌人" && ReferenceEquals(entry.Card, card)) == true);
                 DrawUnitFace(view, DeploymentPreview(card, leader), crowned);
                 return;
             }
@@ -1879,6 +1878,10 @@ namespace Frostline
             Paint(art, card.Art);
             AddItemEffectBadge(art, card);
             view.Q<Label>("item-name").text = card.Name;
+            var emblem = view.Q("item-emblem");
+            bool consume = card.Technique?.Consume == true || card.Action == CardAction.Copy;
+            Paint(emblem, CardStatusView.ResourceRoot + (consume ? "consume" : card.Technique?.SummonUnit != null ? "summon" : "draw"));
+            emblem.tooltip = consume ? "消耗：使用后移入消耗堆" : card.Technique?.SummonUnit != null ? "召唤道具" : "道具";
             var description = view.Q<Label>("item-description");
             description.text = DescribeCard(card, battle);
             description.EnableInClassList("card-desc-long", card.Action == CardAction.Technique || card.Action == CardAction.Copy);
@@ -1928,31 +1931,30 @@ namespace Frostline
             view.Q<Label>("unit-attack").text = type.Passive ? "—" : unit.Attack.ToString();
             view.Q("unit-counter").style.display = unit.Period > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             view.Q<Label>("unit-counter-value").text = unit.Counter.ToString();
+            view.Q("unit-counter").EnableInClassList("counter-ready", unit.Counter <= 1);
+            view.Q("unit-counter").tooltip = $"倒计时 {unit.Counter} / 最大倒计时 {unit.Period}";
+            view.Q("unit-portrait").EnableInClassList("wounded", unit.Health < unit.MaxHealth);
+            view.Q(className: "vital-number").EnableInClassList("attack-boosted", unit.Attack > unit.BaseAttack);
+            view.Q(className: "vital-number").EnableInClassList("attack-reduced", unit.Attack < unit.BaseAttack);
+            view.Q<Label>("unit-kind").text = unit.Leader ? "领袖" : type.Summon ? "召唤" : view.ClassListContains("hostile") ? "敌人" : "伙伴";
+            var emblem = view.Q("unit-emblem");
+            string insignia = unit.Leader || crowned ? "crown" : unit.Pendant != Pendant.None ? "pendant" : type.Summon ? "summon" : null;
+            emblem.style.display = insignia == null ? DisplayStyle.None : DisplayStyle.Flex;
+            if (insignia != null) Paint(emblem, CardStatusView.ResourceRoot + insignia);
 
             var statuses = view.Q("unit-effects");
             statuses.Clear();
-            if (unit.Leader || crowned)
-                statuses.Add(Stat("crown", null, "effect-chip"));
-            if (unit.Pendant != Pendant.None)
-                statuses.Add(Stat("pendant", null, "effect-chip"));
-            AddEffectBadge(statuses, EffectKind.Snow, unit.Frozen);
-            AddEffectBadge(statuses, EffectKind.Shell, unit.Shell);
-            AddEffectBadge(statuses, EffectKind.Spice, unit.Spice);
-            AddEffectBadge(statuses, EffectKind.Overload, unit.Overload);
-            AddEffectBadge(statuses, EffectKind.Ink, unit.Ink);
-            AddEffectBadge(statuses, EffectKind.Weakness, unit.Weakness);
-            AddEffectBadge(statuses, EffectKind.Block, unit.Block);
-            AddEffectBadge(statuses, EffectKind.EffectBonus, unit.EffectBonus);
-            AddEffectBadge(statuses, EffectKind.Thorns, unit.TotalThorns);
-            AddEffectBadge(statuses, EffectKind.PermanentJunk, unit.PermanentJunk);
-            AddEffectBadge(statuses, EffectKind.Burn, unit.Burn);
-            AddEffectBadge(statuses, EffectKind.Poison, unit.Poison);
-            AddEffectBadge(statuses, EffectKind.Corruption, unit.Corruption);
-            AddEffectBadge(statuses, EffectKind.Exposed, unit.Exposed);
-            AddEffectBadge(statuses, EffectKind.Haze, unit.Haze);
-            AddEffectBadge(statuses, EffectKind.DelayedDamage, unit.DamageThisTurn + unit.DamageNextTurn);
+            CardStatus[] active = CardStatusView.Read(unit).ToArray();
+            int visible = active.Length > CardStatusView.CompactLimit ? CardStatusView.CompactLimit - 1 : active.Length;
+            foreach (CardStatus status in active.Take(visible))
+                statuses.Add(StatusChip(status));
+            if (visible < active.Length)
+            {
+                var more = Text($"+{active.Length - visible}", "status-more");
+                more.tooltip = string.Join("\n", active.Skip(visible).Select(status => status.Summary));
+                statuses.Add(more);
+            }
             statuses.style.display = statuses.childCount > 0 ? DisplayStyle.Flex : DisplayStyle.None;
-            statuses.EnableInClassList("dense", statuses.childCount > 10);
 
             Paint(view.Q("unit-portrait"), type.Art);
             view.Q<Label>("unit-name").text = type.Name;
@@ -1961,16 +1963,18 @@ namespace Frostline
             if (unit.Pattern != AttackPattern.Front)
                 tags.Add(Text(Expedition.PatternName(unit.Pattern), "trait"));
             if (type.ResistSnow)
-                tags.Add(Icon("snow", "resist-icon"));
-            if (unit.Frenzy > 1)
-                tags.Add(Text($"狂热 ×{unit.Frenzy}", "trait"));
-            if (type.Counterattack)
-                tags.Add(Text("反击", "trait"));
+                tags.Add(Icon("resist", "resist-icon"));
+            if (unit.HasCounterattack)
+                tags.Add(Text(type.Counterattack ? "反击" : $"反击 {unit.CounterattackPower}", "trait"));
+            if (unit.PoisonOnAttack > 0)
+                tags.Add(Text($"攻击后毒 +{unit.PoisonOnAttack}", "trait"));
             if (type.Summon)
                 tags.Add(Text("召唤", "trait"));
             if (type.DeployOnEnemy)
                 tags.Add(Text("部署在敌方", "trait"));
             bool hasAbility = type.Ability.Effect != EffectKind.None;
+            if (!hasAbility && tags.childCount == 0)
+                tags.Add(Text(type.Passive ? "不主动行动" : "普通攻击", "trait"));
             var skill = view.Q("unit-ability");
             skill.style.display = hasAbility ? DisplayStyle.Flex : DisplayStyle.None;
             skill.EnableInClassList("recycle-draw", type.Ability.Effect == EffectKind.RecycleDraw);
@@ -1980,7 +1984,7 @@ namespace Frostline
                 view.Q<Label>("unit-trigger").text = type.Ability.Timing;
                 if (unit.Pattern == AttackPattern.Support && type.Ability.Trigger == EffectTrigger.Act)
                     view.Q<Label>("unit-trigger").text = "援护时";
-                Paint(view.Q("unit-ability-icon"), $"CardArt/icon_{EffectIcon(type.Ability.Effect)}");
+                Paint(view.Q("unit-ability-icon"), CardStatusView.ResourceRoot + EffectIcon(type.Ability.Effect));
                 string value = type.Ability.Effect switch
                 {
                     EffectKind.JunkPower => $"+{unit.Attack}",
@@ -2017,70 +2021,9 @@ namespace Frostline
             }
         }
 
-        private static string EffectClass(EffectKind effect) => effect switch
-        {
-            EffectKind.Spice => "effect-spice",
-            EffectKind.Overload => "effect-overload",
-            EffectKind.Ink => "effect-ink",
-            EffectKind.Weakness => "effect-weakness",
-            EffectKind.Block => "effect-block",
-            EffectKind.Thorns => "effect-thorns",
-            EffectKind.Burn => "effect-burn",
-            EffectKind.Poison => "effect-poison",
-            EffectKind.Corruption => "effect-corruption",
-            EffectKind.Exposed => "effect-exposed",
-            EffectKind.DelayedDamage => "effect-burn",
-            _ => "effect-bonus"
-        };
+        private static string EffectClass(EffectKind effect) => CardStatusView.ColorClass(effect);
 
-        private static string EffectIcon(EffectKind effect) => effect switch
-        {
-            EffectKind.Heal => "heal",
-            EffectKind.Snow => "snow",
-            EffectKind.Shell => "shell",
-            EffectKind.Spice => "spice",
-            EffectKind.TeamSpice => "spice",
-            EffectKind.Overload => "overload",
-            EffectKind.Ink => "ink",
-            EffectKind.Weakness => "weakness",
-            EffectKind.Block => "block",
-            EffectKind.Thorns => "barbs",
-            EffectKind.Burn => "burn",
-            EffectKind.AttackGrowth => "attack",
-            EffectKind.AttackUp => "attack",
-            EffectKind.AttackDown => "attack",
-            EffectKind.Retaliate => "barbs",
-            EffectKind.StickyFruit => "heal",
-            EffectKind.SnowOnBlock => "snow",
-            EffectKind.SnowAndAttackUp => "snow",
-            EffectKind.DrainAlly or EffectKind.DevourRow or EffectKind.SummonBoost => "health",
-            EffectKind.TriggerAttack => "attack",
-            EffectKind.RowBlast => "overload",
-            EffectKind.Poison or EffectKind.TerrainPoison or EffectKind.TerrainDetox => "poison",
-            EffectKind.TerrainAnchor or EffectKind.TerrainGrowth or EffectKind.TerrainTransfer or EffectKind.TerrainCannon or EffectKind.TerrainGambit => "attack",
-            EffectKind.Corruption => "corruption",
-            EffectKind.MaxCountdownUp or EffectKind.ExtraAllyTick => "timer",
-            EffectKind.TeamHealth or EffectKind.AbsorbRow => "health",
-            EffectKind.HurtForFrenzy or EffectKind.Frenzy => "bonus",
-            EffectKind.WeakenRow => "weakness",
-            EffectKind.SelfAttack or EffectKind.DamageVsLowerHealth => "attack",
-            EffectKind.Exposed => "exposed",
-            EffectKind.HealthGrowth => "health",
-            EffectKind.DelayedDamage => "attack",
-            EffectKind.MutualOverload or EffectKind.OverloadDamage => "overload",
-            _ => "bonus"
-        };
-
-        private void AddEffectBadge(VisualElement strip, EffectKind effect, int amount)
-        {
-            if (amount > 0)
-            {
-                var chip = Stat(EffectIcon(effect), amount.ToString(), "effect-chip");
-                if (effect is not EffectKind.Snow and not EffectKind.Shell)
-                    chip.AddToClassList(EffectClass(effect));
-                strip.Add(chip);
-            }
-        }
+        private static string EffectIcon(EffectKind effect) => CardStatusView.Icon(effect);
 
         private VisualElement AddPortrait(VisualElement view, string art)
         {
@@ -2094,7 +2037,7 @@ namespace Frostline
         private VisualElement Icon(string type, string css)
         {
             var icon = Element(css);
-            Paint(icon, $"CardArt/icon_{type}");
+            Paint(icon, CardStatusView.ResourceRoot + type);
             return icon;
         }
 

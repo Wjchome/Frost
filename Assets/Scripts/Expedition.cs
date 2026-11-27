@@ -16,9 +16,12 @@ namespace Frostline
         Corruption, AllEnemiesPattern, SelfAttack, TeamHealth, WeakenRow, AbsorbRow, HurtForFrenzy, ExtraAllyTick, DamageVsLowerHealth,
         CountdownUp, SnowAndAttackUp, DrainAlly, DevourRow, SummonBoost, TriggerAttack, RowBlast,
         Summon, MimicEnemy, CopyAlly, Sacrifice, OverloadOpposite, Haze, DelayedDamage, MutualOverload, OverloadDamage, PermanentJunk, TerrainAnchor, TerrainAffinity, TerrainAbsorb, TerrainGrowth,
-        TerrainTransfer, TerrainCannon, TerrainPoison, TerrainGambit, TerrainDetox }
+        TerrainTransfer, TerrainCannon, TerrainPoison, TerrainGambit, TerrainDetox,
+        TerrainAttackUp, TerrainAttackDown, TerrainTemporaryAttack, TerrainFrenzy, TerrainSwap,
+        HalfCounterattack, TemporaryAttack, PoisonBurst, PoisonAttack, GroundPoison, PoisonTreatment,
+        TerrainWeakness, TerrainSpice }
     public enum CardTarget { Enemy, Ally, Either, AllEnemies, AllAllies, HealthyEnemies, None, AllUnits, RandomAlly, RandomEnemy, SacrificeAlly,
-        EmptySlot }
+        EmptySlot, Tile, AllTiles }
     public enum JunkOperation { None, DoubleAndStrike, Recycle, BuffAttack, BuffFrenzy }
     public enum Pendant { None, WarmStone, TuningRing, SwiftClasp }
 
@@ -234,6 +237,9 @@ namespace Frostline
             EffectKind.MutualOverload => "过载",
             EffectKind.OverloadDamage => "过载伤害",
             EffectKind.PermanentJunk => "永久垃圾",
+            EffectKind.HalfCounterattack => "反伤",
+            EffectKind.TerrainWeakness => "格子虚弱",
+            EffectKind.TerrainSpice => "格子辣椒",
             _ => ""
         };
 
@@ -248,7 +254,14 @@ namespace Frostline
             EffectKind.Thorns => "承受一次有伤害的单位攻击后，若仍存活，对攻击者造成等同反伤数值的伤害，并消耗 1 层自身反伤（若有）。",
             EffectKind.Burn => "回合末受到等同层数的伤害，再减少 1 层。",
             EffectKind.Exposed => "下次未被格挡的伤害加上当前层数，然后清空易伤。护壳照常吸收伤害。",
-            EffectKind.Poison => "回合末失去等同于层数的生命，然后减少 1 层。",
+            EffectKind.Poison => "回合末受到等同于层数的伤害，先扣格挡，再扣护壳，最后扣生命，然后中毒减少 1 层。",
+            EffectKind.TerrainPoison => "格子毒在回合末减少 1 层；有单位站在上面时，按衰减前的层数造成伤害，先扣格挡，再扣护壳。空格只减层数。",
+            EffectKind.TemporaryAttack or EffectKind.TerrainTemporaryAttack => "临时攻击增加伤害，每回合结束减少 1 点，施加当回合也会衰减；格子临时攻击在空格上也会衰减。",
+            EffectKind.HalfCounterattack => "反伤值为当前攻击的一定比例，向下取整，随攻击变化；受单位攻击后存活时，对攻击者造成反伤伤害。",
+            EffectKind.TerrainAttackUp or EffectKind.TerrainAttackDown => "修改的是格子的固定攻击加成，可以为负；换位后仍留在原格，对新的占格单位生效。",
+            EffectKind.GroundPoison => "立即将自身中毒转为脚下的格子毒。" + Rule(EffectKind.TerrainPoison),
+            EffectKind.TerrainWeakness => "仅降低当前占格单位的攻击；单位实际攻击时消耗，覆盖整次狂热连击。未出手、等待或换位都不会转为单位虚弱，格子上的层数保留。",
+            EffectKind.TerrainSpice => "仅提高当前占格单位的攻击；单位实际攻击时消耗，覆盖整次狂热连击。未出手、等待或换位都不会转为单位辣椒，格子上的层数保留。",
             EffectKind.Corruption => "受到未被格挡的伤害时，伤害翻倍，然后减少 1 层。",
             EffectKind.Haze => "每层让下一次攻击改为攻击自己的友军（同排优先，不打自己），攻击后减少 1 层。没有其他友军时这次攻击落空。",
             _ => ""
@@ -300,9 +313,11 @@ namespace Frostline
         public int Health, Counter, Frozen, Shell;
         public int Spice, Overload, Ink, Weakness, Block, EffectBonus;
         public int Thorns, Burn, Exposed, Poison, Corruption, Haze;
-        public int PermanentJunk, TerrainAttack, TemporaryAttack;
+        public int PermanentJunk, TerrainAttack, TerrainFrenzy, TemporaryAttack;
+        internal int TerrainSpice, TerrainWeakness, AttackTerrainSpice, AttackTerrainWeakness;
+        internal bool UsingTerrainAttack;
+        public int ThornsDivisor, PoisonOnAttack;
         internal bool TerrainPrepared;
-        internal int TemporaryAttackChangedTurn;
         // Delayed damage lands at the end of a turn: the next-turn amount moves up when each turn ends.
         public int DamageThisTurn, DamageNextTurn;
         public int BattleAttack, BattleHealth, BonusFrenzy, CounterReduction;
@@ -313,11 +328,16 @@ namespace Frostline
         internal List<(int Turn, int Amount)> ScheduledHealing = new();
         internal UnitProgress Progress { get; private set; }
         public int BaseAttack => Progress.Attack;
-        public int Attack => Math.Max(0, BaseAttack + BattleAttack + AuraAttack + TerrainAttack + TemporaryAttack + Spice - Weakness);
-        public int TotalThorns => Thorns + AuraThorns;
+        public int Attack => Math.Max(0, BaseAttack + BattleAttack + AuraAttack + TerrainAttack + TemporaryAttack + Spice - Weakness +
+            (UsingTerrainAttack ? AttackTerrainSpice - AttackTerrainWeakness : TerrainSpice - TerrainWeakness));
+        public int TotalThorns => Thorns + AuraThorns + (ThornsDivisor > 0 ? ThornsAt(ThornsDivisor) : 0);
         public int MaxHealth => Progress.Health + Pendants.Health(Pendant) + BattleHealth + AuraHealth;
         public int Period => Type.Period == 0 ? 0 : Math.Max(1, Type.Period - Pendants.Speed(Pendant) - CounterReduction);
-        public int Frenzy => Type.Frenzy + BonusFrenzy;
+        public int Frenzy => Type.Frenzy + BonusFrenzy + TerrainFrenzy;
+        public bool HasCounterattack => Type.Counterattack;
+        public int CounterattackPower => Attack;
+        internal int ThornsAt(int divisor) => Attack / Math.Max(1, divisor);
+        internal int PoisonTreatmentAmount => Math.Min(Attack, Poison);
         public AttackPattern Pattern => AllEnemies ? AttackPattern.AllEnemies : Aimless ? AttackPattern.Aimless :
             Barrage ? AttackPattern.Barrage : Type.Pattern;
         public int AbilityBonus => EffectBonus + Pendants.Effect(Pendant);
@@ -410,6 +430,7 @@ namespace Frostline
             if (Target == CardTarget.AllAllies) parts.Add("作用于所有友军");
             if (Target == CardTarget.AllEnemies) parts.Add("作用于所有敌人");
             if (Target == CardTarget.AllUnits) parts.Add("作用于场上所有单位");
+            if (Target == CardTarget.AllTiles) parts.Add("作用于双方所有单位和格子，含空格");
             if (Target == CardTarget.RandomAlly && Hits + bonusHits <= 1) parts.Add("目标为随机友军");
             if (Target == CardTarget.RandomEnemy && Hits + bonusHits <= 1) parts.Add("目标为随机敌军");
             if (OpponentBlock > 0) parts.Add($"另使一名随机敌军格挡 +{OpponentBlock}");
@@ -453,6 +474,20 @@ namespace Frostline
             EffectKind.DelayedDamage => $"下回合结束时受到 {amount} 点伤害（友军因此阵亡算作献祭）",
             EffectKind.MutualOverload => $"该友军与对面最前方的敌人各过载 +{amount}，然后两者的过载翻倍",
             EffectKind.OverloadDamage => "造成等同于目标过载层数的伤害，然后目标过载减半（向下取整）",
+            EffectKind.TerrainAttackUp => $"格子攻击 +{amount}",
+            EffectKind.TerrainAttackDown => $"格子攻击 −{amount}",
+            EffectKind.TerrainTemporaryAttack => $"格子临时攻击 +{amount}",
+            EffectKind.TerrainPoison => $"格子毒 +{amount}",
+            EffectKind.TerrainWeakness => $"格子虚弱 +{amount}",
+            EffectKind.TerrainSpice => $"格子辣椒 +{amount}",
+            EffectKind.TerrainFrenzy => $"格子狂热 +{amount}",
+            EffectKind.TerrainSwap => "与另一随机格子交换全部格子效果，双方空格也参与",
+            EffectKind.HalfCounterattack => $"本场获得反伤，数值为当前攻击的 1/{amount}（向下取整）",
+            EffectKind.TemporaryAttack => $"临时攻击 +{amount}",
+            EffectKind.PoisonBurst => "造成等同于目标当前中毒层数的伤害",
+            EffectKind.PoisonAttack => $"本场每次攻击后，对命中的目标施加 {amount} 层中毒",
+            EffectKind.GroundPoison => "把自身全部中毒立即转到脚下格子",
+            EffectKind.PoisonTreatment => "按自身攻击移除中毒，并失去等同于实际移除层数的生命",
             _ => $"{Effects.Name(effect)} +{amount}"
         };
     }
@@ -1138,6 +1173,8 @@ namespace Frostline
                 yield return burn;
             foreach (BattleBeat poison in ResolvePoison())
                 yield return poison;
+            foreach (BattleBeat poison in ResolveTerrainPoison())
+                yield return poison;
             foreach (BattleBeat blast in ResolveDeathEvents())
                 yield return blast;
             CompactFormation();
@@ -1243,149 +1280,168 @@ namespace Frostline
                 yield break;
             }
 
-            bool attacked = false;
-            // One layer of haze covers every frenzy hit of this attack, even when there is no ally to hit.
-            bool hazed = !counterattack && attacker.Haze > 0 && attacker.Frozen == 0;
-            int hits = Math.Min(attacker.Frenzy, maxHits);
-            for (int hit = 1; hit <= hits && attacker.Frozen == 0; hit++)
+            bool terrainAttackStarted = false;
+            (bool Active, int Spice, int Weakness) previousTerrainAttack = default;
+            try
             {
-                IReadOnlyList<Position> targets;
-                if (!counterattack)
-                    targets = AttackTargets(source, attacker.Type);
-                else if (!counterTarget.HasValue || attacker.Pattern == AttackPattern.AllEnemies)
-                    targets = PositionsOnSide(!source.Enemy);
-                else
-                    targets = At(counterTarget.Value) != null ? new[] { counterTarget.Value } : Array.Empty<Position>();
-                if (targets.Count == 0)
-                    break;
-
-                attacked = true;
-                if (!counterattack && attacker.Pattern == AttackPattern.Aimless && targets.Count > 1)
-                    targets = new[] { targets[RollTarget(targets.Count)] };
-
-                string action = counterattack ? "反击" : hits > 1 ? $"狂热 {hit}/{hits}" :
-                    attacker.Pattern == AttackPattern.Front ? "攻击" : PatternName(attacker.Pattern);
-                Notice = $"{attacker.Type.Name} · {action}";
-                yield return new BattleBeat(source, targets[0], BattleEffect.Windup, action, targets);
-
-                int defeated = 0;
-                int attackPower = attacker.Attack;
-                var marks = new List<string>(targets.Count);
-                var blocked = new List<BattleBeat>();
-                var struck = new List<(Position Position, Unit Unit)>(targets.Count);
-                foreach (Position target in targets)
+                bool attacked = false;
+                // One layer of haze covers every frenzy hit of this attack, even when there is no ally to hit.
+                bool hazed = !counterattack && attacker.Haze > 0 && attacker.Frozen == 0;
+                int hits = Math.Min(attacker.Frenzy, maxHits);
+                for (int hit = 1; hit <= hits && attacker.Frozen == 0; hit++)
                 {
-                    Unit victim = At(target);
-                    struck.Add((target, victim));
-                    var impact = Hit(source, target, UnitAttackDamage(attacker, victim, attackPower), attacker.Type.Name);
-                    marks.Add(impact.Mark);
-                    if (impact.Blocked)
-                        blocked.Add(impact);
-                    if (At(target) == null)
-                        defeated++;
-                }
+                    IReadOnlyList<Position> targets;
+                    if (!counterattack)
+                        targets = AttackTargets(source, attacker.Type);
+                    else if (!counterTarget.HasValue || attacker.Pattern == AttackPattern.AllEnemies)
+                        targets = PositionsOnSide(!source.Enemy);
+                    else
+                        targets = At(counterTarget.Value) != null ? new[] { counterTarget.Value } : Array.Empty<Position>();
+                    if (targets.Count == 0)
+                        break;
 
-                // Resolve all targets together, then present their impact marks in one beat.
-                yield return new BattleBeat(source, targets[0], BattleEffect.Attack, marks[0], targets, impactMarks: marks);
+                    if (!terrainAttackStarted)
+                    {
+                        previousTerrainAttack = BeginTerrainAttack(source, attacker);
+                        terrainAttackStarted = true;
+                    }
+                    attacked = true;
+                    if (!counterattack && attacker.Pattern == AttackPattern.Aimless && targets.Count > 1)
+                        targets = new[] { targets[RollTarget(targets.Count)] };
 
-                if (Phase == BattlePhase.Lost)
-                {
-                    Notice = $"{Captain.Name}倒下。";
-                    yield break;
-                }
+                    string action = counterattack ? "反击" : hits > 1 ? $"狂热 {hit}/{hits}" :
+                        attacker.Pattern == AttackPattern.Front ? "攻击" : PatternName(attacker.Pattern);
+                    Notice = $"{attacker.Type.Name} · {action}";
+                    yield return new BattleBeat(source, targets[0], BattleEffect.Windup, action, targets);
 
-                foreach (Position target in targets)
-                {
-                    foreach (BattleBeat burst in CheckOverload(target))
-                        yield return burst;
-                    foreach (BattleBeat effect in TriggerAbility(source, target, attacker, EffectTrigger.Hit))
-                        yield return effect;
+                    int defeated = 0;
+                    int attackPower = counterattack ? attacker.CounterattackPower : attacker.Attack;
+                    var marks = new List<string>(targets.Count);
+                    var blocked = new List<BattleBeat>();
+                    var struck = new List<(Position Position, Unit Unit)>(targets.Count);
+                    foreach (Position target in targets)
+                    {
+                        Unit victim = At(target);
+                        struck.Add((target, victim));
+                        var impact = Hit(source, target, UnitAttackDamage(attacker, victim, attackPower), attacker.Type.Name);
+                        marks.Add(impact.Mark);
+                        if (impact.Blocked)
+                            blocked.Add(impact);
+                        if (At(target) == null)
+                            defeated++;
+                    }
+
+                    // Resolve all targets together, then present their impact marks in one beat.
+                    yield return new BattleBeat(source, targets[0], BattleEffect.Attack, marks[0], targets, impactMarks: marks);
+
                     if (Phase == BattlePhase.Lost)
+                    {
+                        Notice = $"{Captain.Name}倒下。";
+                        yield break;
+                    }
+
+                    foreach (Position target in targets)
+                    {
+                        foreach (BattleBeat burst in CheckOverload(target))
+                            yield return burst;
+                        foreach (BattleBeat effect in TriggerAbility(source, target, attacker, EffectTrigger.Hit))
+                            yield return effect;
+                        if (Phase == BattlePhase.Lost)
+                            yield break;
+                    }
+
+                    if (defeated > 0)
+                    {
+                        foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.Kill, defeated))
+                            yield return effect;
+                        foreach (BattleBeat effect in RewardAllyKill(source, defeated))
+                            yield return effect;
+                    }
+
+                    foreach (var impact in blocked)
+                        foreach (var reaction in ResolveBlockReaction(impact))
+                            yield return reaction;
+                    // These reactions also fire when the defender was defeated by the hit.
+                    foreach (var (struckAt, struckUnit) in struck)
+                    {
+                        if (Phase == BattlePhase.Lost || At(source) == null)
+                            break;
+                        if (struckUnit.Ink == 0 && struckUnit.Type.Ability.Trigger == EffectTrigger.WhenAttacked)
+                            foreach (var reaction in ApplyEffect(struckAt, source, struckUnit.Type.Ability.Effect,
+                                struckUnit.Type.Ability.Amount + struckUnit.AbilityBonus))
+                                yield return reaction;
+                    }
+                    if (Phase == BattlePhase.Lost || At(source) == null)
+                        yield break;
+                    if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.SelfAttack))
+                    {
+                        var impact = Hit(source, source, attackPower, attacker.Type.Name);
+                        yield return impact;
+                        foreach (var reaction in ResolveBlockReaction(impact))
+                            yield return reaction;
+                        foreach (var burst in CheckOverload(source))
+                            yield return burst;
+                    }
+                    else if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.SnowAndAttackUp))
+                    {
+                        // The snow follows the hit targets; the attack gain happens once per frenzy segment.
+                        int bonus = attacker.AbilityBonus;
+                        foreach (Position target in targets)
+                            foreach (var effect in ApplyEffect(source, target, EffectKind.Snow, attacker.Type.Ability.Amount + bonus))
+                                yield return effect;
+                        foreach (var effect in ApplyEffect(source, source, EffectKind.AttackUp, attacker.Type.Ability.SecondaryAmount + bonus))
+                            yield return effect;
+                    }
+                    else if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.TerrainPoison))
+                    {
+                        foreach (var effect in AddTerrain(source, targets, poison: attacker.Type.Ability.Amount + attacker.AbilityBonus))
+                            yield return effect;
+                    }
+                    else if (attacker.Type.Ability.Trigger == EffectTrigger.Attack &&
+                        Effects.AppliesToAttackTargets(attacker.Type.Ability.Effect))
+                    {
+                        foreach (Position target in targets)
+                        {
+                            foreach (var effect in TriggerAbility(source, target, attacker, EffectTrigger.Attack))
+                                yield return effect;
+                            if (Phase == BattlePhase.Lost || At(source) == null)
+                                yield break;
+                        }
+                    }
+                    else
+                    {
+                        foreach (var effect in TriggerAbility(source, source, attacker, EffectTrigger.Attack))
+                            yield return effect;
+                    }
+                    if (Phase == BattlePhase.Lost || At(source) == null)
+                        yield break;
+                    if (attacker.Ink == 0 && attacker.PoisonOnAttack > 0)
+                        foreach (Position target in targets)
+                            foreach (var beat in ApplyEffect(source, target, EffectKind.Poison, attacker.PoisonOnAttack))
+                                yield return beat;
+                    foreach (BattleBeat reaction in ResolveReactions(source, targets, blocked, attackPower > 0, counterattack))
+                        yield return reaction;
+                    if (Phase == BattlePhase.Lost || At(source) == null)
                         yield break;
                 }
 
-                if (defeated > 0)
+                if (hazed)
+                    attacker.Haze = Math.Max(0, attacker.Haze - 1);
+                if (attacked)
                 {
-                    foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.Kill, defeated))
+                    attacker.Spice = 0;
+                    attacker.Weakness = 0;
+                    foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.Act))
                         yield return effect;
-                    foreach (BattleBeat effect in RewardAllyKill(source, defeated))
-                        yield return effect;
+                    if (!counterattack && attacker.Ink == 0 && attacker.Type.Ability.Effect == EffectKind.MaxCountdownUp &&
+                        attacker.Type.Ability.Trigger is EffectTrigger.Act or EffectTrigger.Attack)
+                        attacker.Counter = attacker.Period;
                 }
-
-                foreach (var impact in blocked)
-                    foreach (var reaction in ResolveBlockReaction(impact))
-                        yield return reaction;
-                // These reactions also fire when the defender was defeated by the hit.
-                foreach (var (struckAt, struckUnit) in struck)
-                {
-                    if (Phase == BattlePhase.Lost || At(source) == null)
-                        break;
-                    if (struckUnit.Ink == 0 && struckUnit.Type.Ability.Trigger == EffectTrigger.WhenAttacked)
-                        foreach (var reaction in ApplyEffect(struckAt, source, struckUnit.Type.Ability.Effect,
-                            struckUnit.Type.Ability.Amount + struckUnit.AbilityBonus))
-                            yield return reaction;
-                }
-                if (Phase == BattlePhase.Lost || At(source) == null)
-                    yield break;
-                if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.SelfAttack))
-                {
-                    var impact = Hit(source, source, attackPower, attacker.Type.Name);
-                    yield return impact;
-                    foreach (var reaction in ResolveBlockReaction(impact))
-                        yield return reaction;
-                    foreach (var burst in CheckOverload(source))
-                        yield return burst;
-                }
-                else if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.SnowAndAttackUp))
-                {
-                    // The snow follows the hit targets; the attack gain happens once per frenzy segment.
-                    int bonus = attacker.AbilityBonus;
-                    foreach (Position target in targets)
-                        foreach (var effect in ApplyEffect(source, target, EffectKind.Snow, attacker.Type.Ability.Amount + bonus))
-                            yield return effect;
-                    foreach (var effect in ApplyEffect(source, source, EffectKind.AttackUp, attacker.Type.Ability.SecondaryAmount + bonus))
-                        yield return effect;
-                }
-                else if (HasActiveAbility(attacker, EffectTrigger.Attack, EffectKind.TerrainPoison))
-                {
-                    foreach (var effect in AddTerrain(source, targets, poison: attacker.Type.Ability.Amount + attacker.AbilityBonus))
-                        yield return effect;
-                }
-                else if (attacker.Type.Ability.Trigger == EffectTrigger.Attack &&
-                    Effects.AppliesToAttackTargets(attacker.Type.Ability.Effect))
-                {
-                    foreach (Position target in targets)
-                    {
-                        foreach (var effect in TriggerAbility(source, target, attacker, EffectTrigger.Attack))
-                            yield return effect;
-                        if (Phase == BattlePhase.Lost || At(source) == null)
-                            yield break;
-                    }
-                }
-                else
-                {
-                    foreach (var effect in TriggerAbility(source, source, attacker, EffectTrigger.Attack))
-                        yield return effect;
-                }
-                if (Phase == BattlePhase.Lost || At(source) == null)
-                    yield break;
-                foreach (BattleBeat reaction in ResolveReactions(source, targets, blocked, attackPower > 0, counterattack))
-                    yield return reaction;
-                if (Phase == BattlePhase.Lost || At(source) == null)
-                    yield break;
             }
-
-            if (hazed)
-                attacker.Haze = Math.Max(0, attacker.Haze - 1);
-            if (attacked)
+            finally
             {
-                attacker.Spice = 0;
-                attacker.Weakness = 0;
-                foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.Act))
-                    yield return effect;
-                if (!counterattack && attacker.Ink == 0 && attacker.Type.Ability.Effect == EffectKind.MaxCountdownUp &&
-                    attacker.Type.Ability.Trigger is EffectTrigger.Act or EffectTrigger.Attack)
-                    attacker.Counter = attacker.Period;
+                if (terrainAttackStarted)
+                    EndTerrainAttack(attacker, previousTerrainAttack);
             }
         }
 
@@ -1408,6 +1464,8 @@ namespace Frostline
                 if (Phase == BattlePhase.Lost || At(attacker) == null)
                     yield break;
 
+                if (At(target) != defender)
+                    continue;
                 int thorns = defender.TotalThorns;
                 if (thorns == 0 || !triggersThorns)
                     continue;
@@ -1456,14 +1514,19 @@ namespace Frostline
                 if (unit == null || unit.Poison <= 0)
                     continue;
                 int amount = unit.Poison--;
-                unit.Health = Math.Max(0, unit.Health - amount);
-                RemoveIfDefeated(pos, unit);
-                if (Phase != BattlePhase.Lost)
-                    Notice = $"{unit.Type.Name}因中毒失去 {amount} 点生命。";
-                yield return new BattleBeat(pos, pos, BattleEffect.Status, $"中毒 −{amount}");
-                foreach (BattleBeat burst in CheckOverload(pos))
-                    yield return burst;
+                foreach (BattleBeat beat in PoisonDamage(pos, amount, "中毒"))
+                    yield return beat;
             }
+        }
+
+        private IEnumerable<BattleBeat> PoisonDamage(Position position, int amount, string name)
+        {
+            var impact = Hit(position, position, amount, name, BattleEffect.Status, statusDamage: true);
+            yield return impact;
+            foreach (BattleBeat reaction in ResolveBlockReaction(impact))
+                yield return reaction;
+            foreach (BattleBeat burst in CheckOverload(position))
+                yield return burst;
         }
 
         private IEnumerable<BattleBeat> ApplySnowToOpponents(Position source, int amount)
@@ -1489,7 +1552,7 @@ namespace Frostline
         }
 
         private static bool CanCounter(Unit unit) =>
-            unit != null && unit.Type.Counterattack && unit.Frozen == 0 && unit.Ink == 0;
+            unit != null && unit.HasCounterattack && unit.Frozen == 0 && unit.Ink == 0;
 
         private static bool CountersOnBlock(Unit unit) =>
             unit != null && unit.Ink == 0 && unit.Type.Ability.Effect == EffectKind.SnowOnBlock;
@@ -1603,6 +1666,37 @@ namespace Frostline
                 case EffectKind.PermanentJunk: unit.PermanentJunk += amount; break;
                 case EffectKind.Burn: unit.Burn += amount; break;
                 case EffectKind.Poison: unit.Poison += amount; break;
+                case EffectKind.PoisonAttack: unit.PoisonOnAttack += amount; break;
+                case EffectKind.HalfCounterattack: unit.ThornsDivisor = Math.Max(1, amount); break;
+                case EffectKind.TemporaryAttack:
+                    unit.TemporaryAttack += amount;
+                    break;
+                case EffectKind.PoisonBurst:
+                    yield return new BattleBeat(source, target, BattleEffect.Windup, "毒爆", cardStrike: true);
+                    var impact = Hit(source, target, unit.Poison, "毒爆");
+                    yield return impact;
+                    foreach (var reaction in ResolveBlockReaction(impact))
+                        yield return reaction;
+                    if (Phase != BattlePhase.Lost)
+                        foreach (var beat in CheckOverload(target))
+                            yield return beat;
+                    if (At(target) == unit && Phase != BattlePhase.Lost)
+                        foreach (var reaction in ResolveItemHit(target, false))
+                            yield return reaction;
+                    yield break;
+                case EffectKind.GroundPoison:
+                    int transferred = unit.Poison;
+                    unit.Poison = 0;
+                    foreach (var beat in AddTerrain(source, new[] { target }, poison: transferred))
+                        yield return beat;
+                    yield break;
+                case EffectKind.PoisonTreatment:
+                    int removed = unit.PoisonTreatmentAmount;
+                    unit.Poison -= removed;
+                    if (removed > 0)
+                        foreach (var beat in ApplyEffect(source, target, EffectKind.Hurt, removed))
+                            yield return beat;
+                    yield break;
                 case EffectKind.Corruption: unit.Corruption += amount; break;
                 case EffectKind.Exposed: unit.Exposed += amount; break;
                 case EffectKind.AttackUp: unit.BattleAttack += amount; break;
@@ -1667,6 +1761,7 @@ namespace Frostline
                 case EffectKind.Cleanse:
                     unit.Frozen = unit.Ink = unit.Weakness = unit.Overload = unit.Burn =
                         unit.Exposed = unit.Poison = unit.Corruption = unit.Haze = 0;
+                    unit.DamageThisTurn = unit.DamageNextTurn = 0;
                     unit.Aimless = false;
                     feedback = BattleEffect.Recovery;
                     break;
@@ -1715,6 +1810,9 @@ namespace Frostline
                 EffectKind.Countdown or EffectKind.MaxCountdown or EffectKind.AttackDown or EffectKind.BattleHealthDown => $"{Effects.Name(effect)} −{amount}",
                 EffectKind.TeamSpice => $"全体友军辣椒 +{amount}",
                 EffectKind.Hurt => $"生命 −{amount}",
+                EffectKind.PoisonAttack => $"攻击后中毒 +{unit.PoisonOnAttack}",
+                EffectKind.HalfCounterattack => $"反伤 {unit.TotalThorns}",
+                EffectKind.TemporaryAttack => $"临时攻击 +{amount}",
                 _ => $"{Effects.Name(effect)} +{amount}"
             };
             Notice = $"{unit.Type.Name} · {label}";

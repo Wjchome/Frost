@@ -5,7 +5,7 @@
 }
 .background {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-    background-image: url("../Art/Expedition/Cover.png"); background-size: cover; background-position: center;
+    background-image: url("../Art/Expedition/Cover-v2-4c39da.jpg"); background-size: cover; background-position: center;
 }
 .title-screen { flex-grow: 1; justify-content: center; padding-left: 9%; }
 .title-menu {
@@ -36,7 +36,7 @@
 .battle-hud { flex-grow: 1; position: relative; }
 .battle-shade {
     position: absolute; top: 0; bottom: 0; left: 0; right: 0;
-    background-color: rgba(10, 25, 32, 0.20);
+    background-color: rgba(10, 23, 31, 0.12);
 }
 .top {
     min-height: 92px; flex-shrink: 0; padding: 13px 2.5% 0; flex-direction: row;
@@ -90,8 +90,8 @@
 }
 .formation {
     margin-bottom: 7px; padding: 5px 8px; flex-direction: row; align-items: stretch; justify-content: center;
-    background-color: rgba(15, 32, 40, 0.20);
-    border-bottom-width: 1px; border-bottom-color: rgba(183, 208, 204, 0.60);
+    background-color: rgba(15, 32, 40, 0.25);
+    border-bottom-width: 1px; border-bottom-color: rgba(183, 208, 204, 0.67);
 }
 .side { flex-direction: row; align-items: stretch; justify-content: center; flex-grow: 1; flex-basis: 0; min-width: 0; }
 .allies { justify-content: flex-end; }
@@ -109,19 +109,28 @@
 }
 .hostile { background-color: #4a3a46; border-color: #da9c84; }
 .slot.empty {
-    background-color: rgba(15, 34, 39, 0.26); border-width: 1px;
-    border-color: rgba(170, 208, 201, 0.41); justify-content: center;
+    background-color: rgba(13, 37, 42, 0.42); border-width: 1px;
+    border-color: rgba(185, 224, 217, 0.62); justify-content: center;
 }
-.slot.hostile.empty { background-color: rgba(38, 30, 37, 0.13); border-color: rgba(213, 166, 153, 0.24); }
-.unit-face, .card, .floating-card {
-    padding: 4px; border-radius: 9px; border-width: 2px; border-bottom-width: 4px;
-    border-color: #a0c2ba; border-bottom-color: #577e76; background-color: #263a3d;
+.slot.hostile.empty { background-color: rgba(46, 28, 39, 0.39); border-color: rgba(223, 177, 161, 0.62); }
+.unit-face, .card, .floating-card, .deck-card-face.item-card {
+    padding: 6px; border-radius: 7px; border-width: 1px; border-bottom-width: 3px;
+    border-color: #87aaa5; border-bottom-color: #304c4e; background-color: #203b43;
+    background-image: url("../CardArt/Interface/frame-ally.png"); background-size: 100% 100%;
+    -unity-slice-left: 26; -unity-slice-right: 26; -unity-slice-top: 28; -unity-slice-bottom: 28;
 }
-.slot.hostile.unit-face { background-color: #40303c; border-color: #ca9c8e; border-bottom-color: #8d645d; }
-.slot.leader { border-color: #efca75; }
-.slot:hover { border-color: #f7efcb; }
+.hostile.unit-face {
+    background-image: url("../CardArt/Interface/frame-enemy.png");
+    background-color: #392b36; border-color: #c38f80; border-bottom-color: #683c43;
+}
+.item-card, .deck-card-face.item-card {
+    background-image: url("../CardArt/Interface/frame-item.png");
+    -unity-slice-left: 26; -unity-slice-right: 26; -unity-slice-top: 28; -unity-slice-bottom: 28;
+}
+.slot.leader { border-color: #f1cc7d; }
+.slot:hover { border-color: #fff1cc; }
 .face-art {
-    position: relative; flex-grow: 1; min-height: 30px; border-radius: 5px;
+    position: relative; flex-grow: 1; min-height: 30px; border-radius: 4px;
     background-size: cover; background-position: center; background-repeat: no-repeat;
     background-color: #335764;
 }
@@ -130,67 +139,77 @@
     -unity-font-definition: url("../Fonts/FrostlineSans.ttf");
 }
 .face-content .face-art {
-    min-height: 0; flex-basis: 0;
-    border-radius: 4px; background-color: #263c42;
-    border-width: 1px; border-color: rgba(238, 223, 194, 0.40);
+    min-height: 26px; flex-basis: 0; border-radius: 3px; background-color: #263c42;
+    border-width: 1px; border-color: rgba(231, 215, 179, 0.63);
 }
-.unit-portrait { background-image: url("../CardArt/Expedition/SnowCaptain.png"); background-position: center 39%; }
-.item-portrait { background-image: url("../CardArt/Expedition/Dye.png"); }
-.card-caption {
-    margin-top: 3px; padding: 0 4px 3px; flex-shrink: 0;
-    background-color: #eee8d7; border-radius: 3px;
-    border-top-width: 2px; border-top-color: #85a99e;
-}
-.hostile .card-caption { background-color: #f0dbd3; border-top-color: #d4a194; }
-.item-content .card-caption { background-color: #f1e5ca; border-top-color: #c69a5f; }
+.card-heading { flex-direction: row; align-items: center; flex-shrink: 0; height: 26px; padding: 0 2px 3px; }
+.card-emblem { width: 17px; height: 17px; flex-shrink: 0; margin-right: 3px; background-size: contain; background-position: center; background-repeat: no-repeat; }
 .face-title {
-    margin: 0; min-height: 23px; flex-shrink: 0; padding: 1px 2px;
-    color: #203536; font-size: 16px; -unity-text-align: middle-center; -unity-font-style: bold;
+    flex-grow: 1; flex-shrink: 1; margin: 0; min-width: 0;
+    color: #f6e9cb; font-size: 16px; -unity-text-align: middle-left; -unity-font-style: bold;
 }
-.hostile .face-title { color: #52323c; }
-.item-card .face-title { color: #4a3429; }
-.traits { flex-shrink: 0; align-items: center; padding-top: 2px; }
+.card-kind { flex-shrink: 0; font-size: 10px; color: #b6cdc5; margin: 0 0 0 3px; }
+.hostile .card-kind { color: #dcb8ad; }
+.unit-portrait { background-position: center 36%; }
+.unit-vitals { position: absolute; flex-direction: row; align-items: center; left: 3px; right: 3px; bottom: 3px; height: 25px; }
+.health-track {
+    flex-direction: row; align-items: center; flex-grow: 1; min-width: 38px; height: 24px;
+    position: relative; overflow: hidden; border-width: 1px; border-radius: 4px;
+    border-color: #e9b4a0; background-color: #482b35;
+}
+.health-fill { position: absolute; left: 0; top: 0; bottom: 0; background-color: #884c52; }
+.health-icon { margin-left: 3px; }
+.health-value { flex-grow: 1; margin: 0 2px 0 0; color: #fff1dd; font-size: 13px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.wounded .health-track { border-color: #f2a078; }
+.hostile .health-track { border-color: #f0b098; background-color: #422432; }
+.hostile .health-fill { background-color: #9c4d5c; }
+.card-caption {
+    margin-top: 3px; padding: 3px 4px 4px; flex-shrink: 0; min-height: 28px;
+    background-color: #eae1cc; background-image: url("../CardArt/Interface/paper.png");
+    background-size: cover; border-radius: 3px;
+    border-top-width: 1px; border-top-color: #b09b75;
+}
+.hostile .card-caption { -unity-background-image-tint-color: #ead6cc; border-top-color: #b98574; }
+.item-content .card-caption { min-height: 60px; border-top-color: #c8a365; }
+.traits { flex-shrink: 0; align-items: stretch; }
 .trait-row { flex-direction: row; flex-wrap: wrap; justify-content: center; }
 .trait {
-    padding: 0 4px; margin: 0 2px; border-radius: 3px; background-color: rgba(37, 67, 64, 0.14);
-    color: #234247; font-size: 11px; -unity-text-align: middle-center;
+    padding: 0 4px; margin: 0 1px 2px; border-radius: 2px; background-color: rgba(41, 68, 62, 0.12);
+    color: #3b504b; font-size: 10px; -unity-text-align: middle-center;
 }
-.ability-value { flex-direction: row; align-items: center; justify-content: center; }
-.ability-trigger, .ability-amount { font-size: 12px; color: #283c3d; }
-.ability-amount { -unity-font-style: bold; }
-.ability-icon, .resist-icon { width: 13px; height: 13px; background-size: contain; background-repeat: no-repeat; }
-.ability-icon { background-image: url("../CardArt/icon_snow.png"); background-color: #425c61; border-radius: 3px; }
-.resist-icon { background-color: #536b69; border-radius: 3px; }
-.ability-value.silenced { opacity: 0.44; }
-.ability-value.recycle-draw { flex-direction: column; align-self: stretch; }
+.ability-value { flex-direction: column; align-items: stretch; justify-content: center; }
+.ability-trigger { font-size: 10px; color: #6b624e; -unity-text-align: middle-center; margin: 0 0 1px; }
+.ability-result { flex-direction: row; align-items: center; justify-content: center; }
+.ability-amount { flex-shrink: 1; font-size: 12px; color: #293e3e; white-space: normal; margin: 0; -unity-font-style: bold; -unity-text-align: middle-center; }
+.ability-icon, .resist-icon { width: 15px; height: 15px; flex-shrink: 0; margin-right: 3px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.resist-icon { width: 13px; height: 13px; }
+.ability-value.silenced { opacity: 0.48; }
 .ability-value.recycle-draw .ability-icon { display: none; }
-.ability-value.recycle-draw .ability-amount { align-self: stretch; white-space: normal; -unity-text-align: middle-center; }
-.unit-vitals { flex-direction: row; align-items: stretch; flex-shrink: 0; height: 22px; margin-bottom: 3px; }
-.health-track {
-    flex-grow: 1; min-width: 22px; position: relative; overflow: hidden;
-    border-width: 1px; border-radius: 4px; border-color: #80b9aa; background-color: #162c29;
-}
-.health-fill { position: absolute; left: 0; top: 0; bottom: 0; background-color: #3e7765; }
-.health-value {
-    flex-grow: 1; margin: 0; color: #fff4e0; font-size: 13px;
-    -unity-font-style: bold; -unity-text-align: middle-center;
-}
-.hostile .health-track { border-color: #e0a192; background-color: #412737; }
-.hostile .health-fill { background-color: #894858; }
-.effect-strip {
-    flex-direction: row; flex-wrap: wrap; flex-shrink: 0; margin-bottom: 2px;
-}
-.effect-spice { background-color: #8c3c2e; }
-.effect-overload { background-color: #795121; }
-.effect-ink { background-color: #4a315c; }
-.effect-weakness { background-color: #394979; }
-.effect-block { background-color: #2a6069; }
-.effect-bonus { background-color: #2f644c; }
-.effect-thorns { background-color: #635338; }
-.effect-burn { background-color: #934b2e; }
-.effect-poison { background-color: #3c633c; border-color: #a9d68d; }
-.effect-corruption { background-color: #66384c; border-color: #edacb6; }
-.effect-exposed { background-color: #744552; }
+.ability-value.recycle-draw .ability-amount { font-size: 11px; }
+.slot .ability-value { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; }
+.slot .ability-trigger { margin: 0 3px 0 0; }
+.slot .ability-result { flex-shrink: 1; }
+.slot .card-caption { min-height: 25px; padding-top: 2px; padding-bottom: 2px; }
+.effect-strip { flex-direction: row; flex-wrap: wrap; flex-shrink: 0; margin-top: 3px; }
+.effect-snow { background-color: #244f69; border-color: #88c6df; }
+.effect-shell { background-color: #66563c; border-color: #cfba78; }
+.effect-spice { background-color: #773e35; border-color: #d58e69; }
+.effect-overload { background-color: #285c61; border-color: #81c6bd; }
+.effect-ink { background-color: #3c354d; border-color: #9b8ba6; }
+.effect-weakness { background-color: #42465c; border-color: #929dbd; }
+.effect-block { background-color: #2a5761; border-color: #83bec2; }
+.effect-bonus { background-color: #3c5a47; border-color: #a0bc87; }
+.effect-thorns { background-color: #625138; border-color: #c5aa6a; }
+.effect-burn { background-color: #7c4634; border-color: #d69363; }
+.effect-poison { background-color: #3b5735; border-color: #a6cb73; }
+.effect-corruption { background-color: #5a364d; border-color: #c58cbd; }
+.effect-exposed { background-color: #693a46; border-color: #d49b9b; }
+.effect-haze { background-color: #4b4267; border-color: #b1a5d3; }
+.effect-delayed { background-color: #733c43; border-color: #e3a087; }
+.effect-junk { background-color: #584a35; border-color: #c5a16a; }
+.effect-temporary { background-color: #695935; border-color: #e7c577; }
+.effect-frenzy { background-color: #69432f; border-color: #d3a072; }
+.effect-terrain { background-color: #375949; border-color: #9fbb8a; }
 .order-note {
     visibility: hidden; align-self: center; min-width: 235px; max-width: 80%;
     height: 26px; flex-shrink: 0; margin-bottom: 5px; padding: 0 12px;
@@ -202,43 +221,51 @@
 .empty-mark { color: rgba(234, 255, 250, 0.57); font-size: 18px; -unity-text-align: middle-center; }
 .slot.target .empty-mark { color: #fff2cd; }
 .stat {
-    position: absolute; height: 26px; min-width: 32px; padding: 0 4px;
+    position: absolute; height: 28px; min-width: 34px; padding: 0 4px;
     flex-direction: row; justify-content: center; align-items: center;
-    border-width: 1px; border-color: rgba(255, 246, 218, 0.72); border-radius: 6px;
+    border-width: 1px; border-color: #e0c99d; border-radius: 5px;
 }
-.stat-health { background-color: #8f3851; }
-.stat-attack { background-color: #245873; }
-.stat-timer { background-color: #755222; }
-.stat-snow { background-color: #245a84; border-color: #b4eaff; }
-.stat-heal { background-color: #386c56; }
-.stat-shell { background-color: #2a6266; border-color: #a8d7c3; }
+.stat-health { background-color: #884b53; }
+.stat-attack { background-color: #264c5c; }
+.stat-timer { background-color: #725232; }
+.stat-snow { background-color: #244f69; border-color: #88c6df; }
+.stat-heal { background-color: #386650; }
+.stat-shell { background-color: #66563c; border-color: #cfba78; }
 .stat-crown { background-color: #795622; border-color: #f6d47f; }
 .stat-pendant { background-color: #745531; border-color: #f4d689; }
-.stat-icon { width: 15px; height: 15px; margin-right: 1px; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; }
-.attack-icon { background-image: url("../CardArt/icon_attack.png"); }
-.timer-icon { background-image: url("../CardArt/icon_timer.png"); }
-.stat-value { margin: 0; color: #fff8df; font-size: 14px; -unity-font-style: bold; -unity-text-align: middle-center; }
+.stat-icon { width: 18px; height: 18px; margin-right: 2px; flex-shrink: 0; background-size: contain; background-position: center; background-repeat: no-repeat; }
+.health-icon { background-image: url("../CardArt/Interface/health.png"); width: 14px; height: 14px; }
+.attack-icon { background-image: url("../CardArt/Interface/attack.png"); }
+.timer-icon { background-image: url("../CardArt/Interface/timer.png"); }
+.stat-value { margin: 0; padding: 0; color: #fff2d7; font-size: 15px; -unity-font-style: bold; -unity-text-align: middle-center; }
 .vital-number, .unit-counter {
-    position: relative; height: 22px; min-width: 26px; padding: 0 2px; margin-left: 2px;
-    flex-shrink: 0; border-radius: 4px;
+    position: relative; height: 25px; min-width: 31px; padding: 0 3px; margin-left: 3px;
+    flex-shrink: 0; border-radius: 5px;
 }
-.vital-number .stat-icon { width: 11px; height: 11px; }
-.vital-number .stat-value { font-size: 12px; }
-.unit-counter { border-color: #e4ba75; background-color: #674023; }
-.unit-counter .stat-icon { width: 11px; height: 11px; }
-.unit-counter .stat-value { font-size: 13px; }
-.effect-chip { position: relative; height: 18px; width: 27px; min-width: 0; padding: 0 1px; margin: 0 1px 1px 0; border-radius: 4px; }
-.effect-chip .stat-icon { width: 11px; height: 11px; }
-.effect-chip .stat-value { margin: 0; padding: 0; font-size: 11px; }
-.effect-strip.dense .effect-chip { width: 24px; padding: 0; }
-.effect-strip.dense .stat-icon { width: 10px; height: 10px; }
-.effect-strip.dense .stat-value { font-size: 10px; }
-.attack-corner { top: 3px; right: 3px; }
-.item-effect-badge { right: 4px; bottom: 4px; padding: 0 4px; height: 24px; border-radius: 4px; }
-.item-effect-badge .stat-icon { width: 14px; height: 14px; }
-.item-effect-badge .stat-value { font-size: 13px; }
-.rule-badge { position: relative; height: 20px; min-width: 31px; }
-.rule-badge .stat-icon { width: 12px; height: 12px; }
+.vital-number .stat-icon, .unit-counter .stat-icon { width: 14px; height: 14px; }
+.vital-number .stat-value, .unit-counter .stat-value { font-size: 14px; }
+.unit-counter { border-color: #dab778; background-color: #6b4f31; }
+.unit-counter.counter-ready { border-color: #ffe5a1; background-color: #96703d; }
+.attack-boosted { background-color: #355f48; border-color: #b3d6a0; }
+.attack-reduced { background-color: #5a3a46; border-color: #ba91a4; }
+.effect-chip {
+    position: relative; height: 22px; min-width: 32px; width: auto; padding: 0 3px;
+    margin: 0 2px 2px 0; border-radius: 4px; flex-shrink: 0;
+}
+.effect-chip .stat-icon { width: 16px; height: 16px; margin-right: 1px; }
+.effect-chip .stat-value { font-size: 11px; }
+.effect-chip:hover { border-color: #fff0c7; }
+.status-more {
+    min-width: 30px; height: 22px; margin: 0 0 2px; padding: 0 3px;
+    background-color: #34494e; color: #f1d69f; border-width: 1px; border-color: #849c96;
+    border-radius: 4px; font-size: 11px; -unity-font-style: bold; -unity-text-align: middle-center;
+}
+.attack-corner { top: 4px; right: 4px; }
+.item-effect-badge { right: 4px; bottom: 4px; padding: 0 5px; height: 27px; border-radius: 4px; }
+.item-effect-badge .stat-icon { width: 18px; height: 18px; }
+.item-effect-badge .stat-value { font-size: 14px; }
+.rule-badge { position: relative; height: 21px; min-width: 32px; }
+.rule-badge .stat-icon { width: 14px; height: 14px; }
 .rule-badge .stat-value { font-size: 12px; }
 .order-badge {
     position: absolute; left: 6px; top: 39%; width: 30px; height: 30px;
@@ -251,7 +278,7 @@
     color: #ffe2bc; font-size: 14px; -unity-text-align: middle-center; -unity-font-style: bold;
 }
 .forecast-chip {
-    position: absolute; left: 2px; right: 2px; bottom: 1px; height: 20px;
+    position: absolute; left: 2px; right: 2px; top: 2px; height: 20px;
     margin: 0; border-width: 1px; border-color: #63a6a7; border-radius: 3px;
     background-color: #28536a; color: #e3f6fa; font-size: 12px;
     -unity-font-style: bold; -unity-text-align: middle-center;
@@ -262,6 +289,7 @@
     font-size: 11px; color: #e4f2d4; background-color: rgba(28, 66, 47, 0.95);
     -unity-text-align: middle-center; white-space: normal;
 }
+.terrain-chip.terrain-current { position: relative; left: auto; right: auto; bottom: auto; flex-shrink: 0; margin-top: 2px; }
 .terrain-chip.terrain-preview { color: #fff3bc; background-color: #514b25; }
 .forecast-chip.forecast-danger { color: #ffe3ce; border-color: #df9a83; background-color: #67384a; }
 .forecast-chip.forecast-gain { color: #e4f9d8; border-color: #9accaa; background-color: #335d55; }
@@ -276,7 +304,7 @@
 .overload-burst { color: #ffefbe; background-color: #852f20; }
 .thorns-burst { color: #fff4bb; background-color: #695538; }
 .burn-burst { color: #ffdeb8; background-color: #963e2b; }
-.slot.target, .button.target { border-color: #ffe19f; background-color: rgba(86, 93, 70, 0.96); }
+.slot.target, .slot.empty.target, .slot.hostile.empty.target, .button.target { border-color: #ffe19f; background-color: rgba(86, 93, 70, 0.96); }
 .slot.picked { border-color: #fff0a1; }
 .slot.source { border-color: #ffbd7d; }
 .slot.frozen { border-color: #8ad7ff; }
@@ -297,14 +325,6 @@
     border-color: #b9efd0; background-color: #294d4a;
 }
 .strike-trail { position: absolute; background-color: #fff8ce; rotate: 42deg; border-radius: 6px; }
-.notice-bar {
-    min-height: 34px; flex-shrink: 0; align-self: center; width: 88%;
-    margin: 4px 0 7px; padding: 4px 12px; align-items: center; flex-direction: row;
-    justify-content: space-between; border-radius: 3px;
-    border-left-width: 2px; border-left-color: #81a9a0; background-color: rgba(15, 32, 38, 0.92);
-}
-.notice { color: #e6f0e5; font-size: 14px; flex-shrink: 1; white-space: normal; }
-.hint { color: #f2d5ac; font-size: 14px; margin-left: 12px; flex-shrink: 1; white-space: normal; -unity-text-align: middle-right; }
 .tray {
     height: 258px; flex-shrink: 0; padding: 7px 16px 11px; margin: 0 2.5% 11px;
     flex-direction: row; align-items: stretch; border-radius: 7px;
@@ -343,18 +363,15 @@
 .card:hover { border-color: #fff0c0; translate: 0 -5px; }
 .card.selected, .card.selected:hover { border-color: #ffdc91; background-color: #554730; translate: 0 -7px; }
 .card.hand-target { border-color: #b9efd0; }
-.item-rules {
-    flex-shrink: 0; padding: 2px 0; margin: 0 2px;
-    border-top-width: 1px; border-top-color: rgba(133, 103, 65, 0.34);
-}
+.item-rules { flex-shrink: 0; padding: 1px 0; margin: 0; }
 .item-secondary { flex-direction: row; justify-content: center; margin-top: 2px; }
 .card-desc {
-    min-height: 28px; margin: 0; padding: 1px 2px; font-size: 14px; white-space: normal;
-    color: #463623; -unity-text-align: middle-center;
+    min-height: 28px; margin: 0; padding: 1px 2px; font-size: 13px; white-space: normal;
+    color: #403e31; -unity-text-align: upper-left;
 }
 .card-desc.card-desc-long { font-size: 12px; }
 .redraw { padding-left: 40px; position: relative; min-height: 57px; font-size: 17px; }
-.bell-icon { position: absolute; left: 12px; top: 15px; width: 23px; height: 24px; background-image: url("../CardArt/icon_bell.png"); background-size: contain; background-repeat: no-repeat; }
+.bell-icon { position: absolute; left: 12px; top: 15px; width: 23px; height: 24px; background-image: url("../CardArt/Interface/bell.png"); background-size: contain; background-repeat: no-repeat; }
 .redraw-note { margin-top: 5px; color: #b7d1d3; font-size: 13px; -unity-text-align: middle-center; }
 .junk-per-turn-note { display: none; color: #edcb92; }
 .redraw.redraw-ready { background-color: #94c8aa; border-color: #cde6c0; }
@@ -386,7 +403,11 @@
     align-items: stretch; justify-content: flex-start; background-color: #234148; border-color: #63847e;
 }
 .choice-grid .selection-card:hover { background-color: #335d66; border-color: #f1ce8b; translate: 0 -2px; }
-.site-preview { height: 82px; border-radius: 5px; background-size: cover; background-position: center; flex-shrink: 0; }
+.encounter-choice .site-preview {
+    height: 156px; flex-shrink: 0; border-radius: 4px;
+    background-size: cover; background-position: center 24%; background-repeat: no-repeat;
+    background-color: #283f4e; border-width: 1px; border-color: #607f7d;
+}
 .selection-card .face-art { height: 66px; min-height: 66px; flex-grow: 0; flex-shrink: 0; }
 .selection-card.supply-choice .face-art { height: 118px; min-height: 118px; }
 .selection-title { color: #ffe6b0; font-size: 20px; margin-top: 6px; -unity-text-align: middle-left; }
@@ -459,3 +480,41 @@
 }
 .deck-card-description { margin-top: 10px; white-space: normal; color: #d3e4df; font-size: 14px; }
 .deck-empty { color: #abcbc8; white-space: normal; font-size: 14px; }
+
+/* Status details use the same live values as the badges. */
+.card-inspector {
+    position: absolute; display: none; padding: 13px 14px 14px; border-radius: 6px;
+    background-color: rgba(17, 37, 41, 0.98); border-width: 1px; border-color: #8baba1;
+    border-top-width: 3px; border-top-color: #dab679;
+}
+.inspector-title { font-size: 21px; color: #f7e4bd; -unity-font-style: bold; margin: 0 0 4px; }
+.inspector-vitals { font-size: 12px; color: #aec8bd; margin: 0 0 7px; white-space: normal; }
+.inspector-description { font-size: 14px; color: #e2e9dc; margin: 0 0 4px; white-space: normal; }
+.inspector-note { font-size: 12px; color: #c0d4be; margin: 4px 0 0; white-space: normal; }
+.inspector-warning { font-size: 12px; color: #d5b2e0; margin: 5px 0 0; white-space: normal; }
+.inspector-section { font-size: 11px; color: #c4b48b; margin: 9px 0 5px; letter-spacing: 1px; }
+.inspector-statuses { min-height: 35px; max-height: 360px; flex-shrink: 1; }
+.inspector-statuses .unity-scroll-view__content-container { padding-right: 4px; }
+.inspector-status { flex-shrink: 0; margin: 0 0 6px; padding: 5px 7px 7px; border-radius: 3px; }
+.inspector-status-heading { flex-direction: row; align-items: center; }
+.inspector-status-icon { width: 19px; height: 19px; margin-right: 3px; background-size: contain; background-position: center; background-repeat: no-repeat; }
+.inspector-status-name { margin: 0; color: #fff1d5; font-size: 13px; -unity-font-style: bold; }
+.inspector-status-rule { font-size: 12px; color: #f0e8d5; white-space: normal; margin: 3px 0 0; }
+.deck-card-face.unit-face, .deck-card-face.item-card { padding: 6px; border-width: 1px; border-bottom-width: 3px; }
+.compact-cards .tray { height: 218px; }
+.compact-cards .card-heading { height: 22px; }
+.compact-cards .face-title { font-size: 14px; }
+.compact-cards .slot .card-kind { display: none; }
+.compact-cards .slot .unit-vitals { height: 22px; bottom: 2px; left: 2px; right: 2px; }
+.compact-cards .slot .health-track { height: 21px; }
+.compact-cards .slot .vital-number, .compact-cards .slot .unit-counter { height: 22px; min-width: 27px; margin-left: 2px; }
+.compact-cards .slot .stat-value { font-size: 12px; }
+.compact-cards .effect-chip, .compact-cards .status-more { height: 18px; }
+.compact-cards .effect-chip .stat-icon { width: 14px; height: 14px; }
+.compact-cards .effect-chip .stat-value { font-size: 10px; }
+.compact-cards .ability-trigger { font-size: 9px; }
+.compact-cards .ability-amount { font-size: 11px; }
+.compact-cards .trait { font-size: 9px; }
+.compact-cards .card-caption { padding-top: 2px; padding-bottom: 3px; }
+.compact-cards .card-desc { font-size: 12px; }
+.compact-cards .card-desc.card-desc-long { font-size: 11px; }

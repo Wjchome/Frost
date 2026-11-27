@@ -1,30 +1,38 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
   <Style src="ExpeditionLayout.uss" />
   <ui:VisualElement class="face-content unit-content" picking-mode="Ignore">
-    <ui:VisualElement class="unit-vitals" picking-mode="Ignore">
-      <ui:VisualElement class="health-track" picking-mode="Ignore">
-        <ui:VisualElement name="unit-health-fill" class="health-fill" style="width: 75%;" picking-mode="Ignore" />
-        <ui:Label name="unit-health" text="6/8" class="health-value" picking-mode="Ignore" />
-      </ui:VisualElement>
-      <ui:VisualElement class="stat stat-attack vital-number" picking-mode="Ignore">
-        <ui:VisualElement class="stat-icon attack-icon" picking-mode="Ignore" />
-        <ui:Label name="unit-attack" text="3" class="stat-value" picking-mode="Ignore" />
-      </ui:VisualElement>
-      <ui:VisualElement name="unit-counter" class="stat stat-timer unit-counter" picking-mode="Ignore">
-        <ui:VisualElement class="stat-icon timer-icon" picking-mode="Ignore" />
-        <ui:Label name="unit-counter-value" text="2" class="stat-value" picking-mode="Ignore" />
+    <ui:VisualElement class="card-heading" picking-mode="Ignore">
+      <ui:VisualElement name="unit-emblem" class="card-emblem" picking-mode="Ignore" />
+      <ui:Label name="unit-name" text="霜线信使" class="face-title" picking-mode="Ignore" />
+      <ui:Label name="unit-kind" text="伙伴" class="card-kind" picking-mode="Ignore" />
+    </ui:VisualElement>
+    <ui:VisualElement name="unit-portrait" class="face-art unit-portrait" picking-mode="Ignore">
+      <ui:VisualElement class="unit-vitals" picking-mode="Ignore">
+        <ui:VisualElement class="health-track" picking-mode="Ignore">
+          <ui:VisualElement name="unit-health-fill" class="health-fill" style="width: 75%;" picking-mode="Ignore" />
+          <ui:VisualElement class="health-icon stat-icon" picking-mode="Ignore" />
+          <ui:Label name="unit-health" text="6/8" class="health-value" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="stat stat-attack vital-number" picking-mode="Ignore">
+          <ui:VisualElement class="stat-icon attack-icon" picking-mode="Ignore" />
+          <ui:Label name="unit-attack" text="3" class="stat-value" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="unit-counter" class="stat stat-timer unit-counter" picking-mode="Ignore">
+          <ui:VisualElement class="stat-icon timer-icon" picking-mode="Ignore" />
+          <ui:Label name="unit-counter-value" text="2" class="stat-value" picking-mode="Ignore" />
+        </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement name="unit-effects" class="effect-strip" picking-mode="Ignore" />
-    <ui:VisualElement name="unit-portrait" class="face-art unit-portrait" picking-mode="Ignore" />
     <ui:VisualElement class="card-caption" picking-mode="Ignore">
-      <ui:Label name="unit-name" text="霜线信使" class="face-title" picking-mode="Ignore" />
       <ui:VisualElement name="unit-traits" class="traits" picking-mode="Ignore">
         <ui:VisualElement name="unit-tags" class="trait-row" picking-mode="Ignore" />
         <ui:VisualElement name="unit-ability" class="ability-value" picking-mode="Ignore">
           <ui:Label name="unit-trigger" text="攻击时" class="ability-trigger" picking-mode="Ignore" />
-          <ui:VisualElement name="unit-ability-icon" class="ability-icon" picking-mode="Ignore" />
-          <ui:Label name="unit-ability-amount" text="+1" class="ability-amount" picking-mode="Ignore" />
+          <ui:VisualElement class="ability-result" picking-mode="Ignore">
+            <ui:VisualElement name="unit-ability-icon" class="ability-icon" picking-mode="Ignore" />
+            <ui:Label name="unit-ability-amount" text="+1" class="ability-amount" picking-mode="Ignore" />
+          </ui:VisualElement>
         </ui:VisualElement>
       </ui:VisualElement>
     </ui:VisualElement>

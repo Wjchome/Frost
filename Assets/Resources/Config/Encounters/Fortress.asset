@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Fortress
   m_EditorClassIdentifier:
   displayName: "白幕堡垒"
-  landscape: {fileID: 2800000, guid: ef201164c5315474e8674d851ad17cda, type: 3}
+  landscape: {fileID: 2800000, guid: 14792371f6fc4feaaab0ffd73b63f98c, type: 3}
   briefing: "终波的大雪怪施加雪球，雪吞吞也在另一排登场。"
   reinforcementInterval: 4
   waves:
