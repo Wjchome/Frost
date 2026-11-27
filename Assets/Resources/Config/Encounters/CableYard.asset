@@ -12,25 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aaca6811335594793ff8e856b62c3f1, type: 3}
   m_Name: CableYard
   m_EditorClassIdentifier:
-  displayName: "断索工段"
+  displayName: "晶壳工段"
   landscape: {fileID: 2800000, guid: 27711627fa7642db844aaa71f7df74c3, type: 3}
-  briefing: "快快躲在山胡桃身后，给全队加攻。"
-  reinforcementInterval: 4
+  briefing: "冰棘卫用格挡抵消大伤害，山胡桃攻击后补甲。末波补甲匠持续保护霜眼猎手，猎手远射威胁后排。"
+  reinforcementInterval: 5
   waves:
+  - enemies:
+    - unit: {fileID: 11400000, guid: 5fd748e17f6546c0bafcfb3e1ea399d1, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 972115f49c0a4d36a2e5bf8043ac5618, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 972115f49c0a4d36a2e5bf8043ac5618, type: 2}
+      row: 2
   - enemies:
     - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
+    - unit: {fileID: 11400000, guid: a257b43cf13d463d98080d147ad6eecb, type: 2}
       row: 1
-  - enemies:
-    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+    - unit: {fileID: 11400000, guid: 5fd748e17f6546c0bafcfb3e1ea399d1, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
+    - unit: {fileID: 11400000, guid: 972115f49c0a4d36a2e5bf8043ac5618, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
+    - unit: {fileID: 11400000, guid: be367436fb754598b1618c97124b7567, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
+    - unit: {fileID: 11400000, guid: a257b43cf13d463d98080d147ad6eecb, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 972115f49c0a4d36a2e5bf8043ac5618, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 5fd748e17f6546c0bafcfb3e1ea399d1, type: 2}
       row: 2
-  pendantReward: 2
+    - unit: {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
+      row: 2
+  pendantReward: 0
   rewardCards: []

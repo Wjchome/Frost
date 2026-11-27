@@ -74,8 +74,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c018a682407a5eca84135ad66dd7b02e, type: 2}
   - {fileID: 11400000, guid: 02811f8cac045ab2a8ab05e2be044b77, type: 2}
   - {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
-  - {fileID: 11400000, guid: 457cac37b8f25c36bde1f6957773c673, type: 2}
-  - {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
   - {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
   - {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
   - {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
@@ -91,7 +89,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
   - {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
   - {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
-  - {fileID: 11400000, guid: c41bd3222b105248872792d86ad63667, type: 2}
   - {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
   - {fileID: 11400000, guid: 1940e292ff5b5c0e8d1e555ba1783878, type: 2}
   - {fileID: 11400000, guid: 502c5e43c84e5faea60e34edc28f78a8, type: 2}
@@ -127,25 +124,31 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a1e58fedb61245f483cd56bea1a56cd8, type: 2}
   - {fileID: 11400000, guid: e39677a06cbb52edbd77f4c03226772f, type: 2}
   - {fileID: 11400000, guid: f5d206042b214f03b7ae06358cda5885, type: 2}
+  - {fileID: 11400000, guid: 972115f49c0a4d36a2e5bf8043ac5618, type: 2}
+  - {fileID: 11400000, guid: a257b43cf13d463d98080d147ad6eecb, type: 2}
+  - {fileID: 11400000, guid: be3160e6299945d098c370e5d9ac8980, type: 2}
+  - {fileID: 11400000, guid: 5fd748e17f6546c0bafcfb3e1ea399d1, type: 2}
+  - {fileID: 11400000, guid: be367436fb754598b1618c97124b7567, type: 2}
+  - {fileID: 11400000, guid: 3c5c964c12344fcb88c9af7f42f787da, type: 2}
+  - {fileID: 11400000, guid: 43473e873b3e479b9ba306794f923e5a, type: 2}
+  - {fileID: 11400000, guid: dd5644353227464581302d61d96d521d, type: 2}
+  - {fileID: 11400000, guid: be6318538c3044ed80b7f9c9d7a05262, type: 2}
   stickyFruit: {fileID: 11400000, guid: b1628b175dfc5689af45b62eef2e1559, type: 2}
   junkCard: {fileID: 11400000, guid: 0c25fee2d6075b0d8658e19748554224, type: 2}
   companions: []
   stages:
-  - title: "选择低级关卡"
+  - title: "选择第一战 · 雪球 / 士气"
     recruitCompanions: 1
     encounters:
     - {fileID: 11400000, guid: 127d726042a150b89c54d7bacf3114ea, type: 2}
     - {fileID: 11400000, guid: db6734ad319b5947991427fc5a4b0099, type: 2}
-  - title: "选择高级关卡"
+  - title: "选择第二战 · 成长 / 辣椒"
+    recruitCompanions: 0
     encounters:
-    - {fileID: 11400000, guid: 7639a5efa4e65bed917bb45103c1e767, type: 2}
     - {fileID: 11400000, guid: 51314b55f1ff5ec1a5294ea4bcc8ef32, type: 2}
-  - title: "选择封锁线"
-    recruitCompanions: 1
+    - {fileID: 11400000, guid: e99f43646c7156629c45c5f6d119e19e, type: 2}
+  - title: "选择第三战 · 护壳 / 中毒"
+    recruitCompanions: 0
     encounters:
     - {fileID: 11400000, guid: 6c22484943f050c982deb573f1aadf9b, type: 2}
     - {fileID: 11400000, guid: 7d69d5600ed65ee2a41ef058f84a55c2, type: 2}
-  - title: "选择终局关卡"
-    encounters:
-    - {fileID: 11400000, guid: 8bf70e450fc45c64844d78764388f331, type: 2}
-    - {fileID: 11400000, guid: e99f43646c7156629c45c5f6d119e19e, type: 2}

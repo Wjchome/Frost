@@ -12,25 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aaca6811335594793ff8e856b62c3f1, type: 3}
   m_Name: Mine
   m_EditorClassIdentifier:
-  displayName: "红炭矿井"
+  displayName: "红炭营地"
   landscape: {fileID: 2800000, guid: b61d1685a2f346d9a3a768b9cc83fd41, type: 3}
-  briefing: "注意受击发辣椒的辣女巫，最后分排应对大脚怪的扫射。"
-  reinforcementInterval: 4
+  briefing: "辣女巫受击给全队辣椒，椒鼓手强化同排前排。企鹅团将辣椒兑现为三连击，末波大脚怪用横扫制造整排压力。"
+  reinforcementInterval: 5
   waves:
   - enemies:
     - unit: {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
       row: 1
     - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
       row: 1
+    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
+      row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
+    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+    - unit: {fileID: 11400000, guid: 3c5c964c12344fcb88c9af7f42f787da, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
       row: 2
   - enemies:
     - unit: {fileID: 11400000, guid: 502c5e43c84e5faea60e34edc28f78a8, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
+    - unit: {fileID: 11400000, guid: 3c5c964c12344fcb88c9af7f42f787da, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 6fc7638c37c15183908429615543b124, type: 2}
       row: 2
-  pendantReward: 0
+    - unit: {fileID: 11400000, guid: ff5cad6b8e155ce48ff401b89083a507, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
+      row: 2
+  pendantReward: 3
   rewardCards: []

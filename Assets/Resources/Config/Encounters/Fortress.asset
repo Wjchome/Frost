@@ -14,21 +14,25 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "白幕堡垒"
   landscape: {fileID: 2800000, guid: 14792371f6fc4feaaab0ffd73b63f98c, type: 3}
-  briefing: "终波的大雪怪施加雪球，雪吞吞也在另一排登场。"
+  briefing: "护心菇维持大雪怪血量；终波冰冠巨兽横扫施雪，每个获得雪球的目标都会让雪吞吞加攻。"
   reinforcementInterval: 4
   waves:
   - enemies:
     - unit: {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
       row: 1
+    - unit: {fileID: 11400000, guid: be367436fb754598b1618c97124b7567, type: 2}
+      row: 1
     - unit: {fileID: 11400000, guid: f8d5116d59f25b76883aea7041507c31, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
+    - unit: {fileID: 11400000, guid: 457cac37b8f25c36bde1f6957773c673, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
+    - unit: {fileID: 11400000, guid: 43473e873b3e479b9ba306794f923e5a, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 5fd748e17f6546c0bafcfb3e1ea399d1, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: 457cac37b8f25c36bde1f6957773c673, type: 2}
+    - unit: {fileID: 11400000, guid: 2d66cf22f6f440be846afdfd13bbd544, type: 2}
       row: 1
     - unit: {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
       row: 2

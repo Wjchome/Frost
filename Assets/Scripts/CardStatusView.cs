@@ -50,6 +50,7 @@ namespace Frostline
                 yield return new CardStatus(EffectKind.Shell, unit.Shell, "受到伤害时先扣护壳，再扣生命；格挡优先于护壳。");
             if (unit.Block > 0) yield return new CardStatus(EffectKind.Block, unit.Block);
             if (unit.Spice > 0) yield return new CardStatus(EffectKind.Spice, unit.Spice);
+            if (unit.PoisonOnAttack > 0) yield return new CardStatus(EffectKind.PoisonAttack, unit.PoisonOnAttack);
             if (unit.TemporaryAttack > 0)
                 yield return new CardStatus(EffectKind.TemporaryAttack, unit.TemporaryAttack);
             if (unit.TotalThorns > 0 || unit.ThornsDivisor > 0)
@@ -122,7 +123,7 @@ namespace Frostline
             EffectKind.Overload or EffectKind.MutualOverload or EffectKind.OverloadDamage => "effect-overload",
             EffectKind.Ink => "effect-ink", EffectKind.Weakness or EffectKind.TerrainWeakness => "effect-weakness",
             EffectKind.Block => "effect-block", EffectKind.Thorns => "effect-thorns",
-            EffectKind.Burn => "effect-burn", EffectKind.Poison => "effect-poison",
+            EffectKind.Burn => "effect-burn", EffectKind.Poison or EffectKind.PoisonAttack => "effect-poison",
             EffectKind.Corruption => "effect-corruption", EffectKind.Exposed => "effect-exposed",
             EffectKind.Haze => "effect-haze", EffectKind.DelayedDamage => "effect-delayed",
             EffectKind.PermanentJunk => "effect-junk", EffectKind.TemporaryAttack => "effect-temporary",
@@ -153,7 +154,7 @@ namespace Frostline
                 EffectKind.TerrainTransfer or EffectKind.TerrainCannon or EffectKind.TerrainGambit or
                 EffectKind.TerrainAttackUp or EffectKind.TerrainAttackDown or EffectKind.TerrainSwap => "terrain",
             EffectKind.AttackUp or EffectKind.AttackDown or EffectKind.AttackGrowth or EffectKind.TriggerAttack or
-                EffectKind.DamageVsLowerHealth or EffectKind.SelfAttack => "attack",
+                EffectKind.DamageVsLowerHealth or EffectKind.SelfAttack or EffectKind.HealthAttackUp => "attack",
             EffectKind.Sacrifice => "consume",
             _ => "bonus"
         };

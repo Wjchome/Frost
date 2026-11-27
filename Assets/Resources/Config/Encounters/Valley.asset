@@ -14,23 +14,28 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "风蚀雪谷"
   landscape: {fileID: 2800000, guid: 001c8e43720c4770aacfd8709a508cb9, type: 3}
-  briefing: "雪狼命中施加雪球，雪刺猬会扫射同排。"
-  reinforcementInterval: 4
+  briefing: "雪球拖慢行动，雪波波在场给全队加攻。末波雪吞吞会从每次施雪中成长，优先拆辅助或施雪者。"
+  reinforcementInterval: 6
   waves:
   - enemies:
     - unit: {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
       row: 1
+    - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
+      row: 2
     - unit: {fileID: 11400000, guid: e81db3a193275da7a8357f37d0ba0751, type: 2}
       row: 2
   - enemies:
+    - unit: {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
+      row: 1
     - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
-      row: 2
-  - enemies:
-    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
+    - unit: {fileID: 11400000, guid: e81db3a193275da7a8357f37d0ba0751, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+    - unit: {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 16ca57f481ee5d64b19747afc7550677, type: 2}
       row: 2
   pendantReward: 1
   rewardCards: []

@@ -16,8 +16,8 @@ MonoBehaviour:
   catalogGroup: "敌人"
   portrait: {fileID: 2800000, guid: 0f703ca7076d2aa4780d9fca3eea6cf6, type: 3}
   action: 0
-  health: 16
-  power: 4
+  health: 26
+  power: 5
   period: 5
   frenzy: 1
   pattern: 0

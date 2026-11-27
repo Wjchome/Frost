@@ -725,6 +725,8 @@ namespace Frostline
                 (label, style) = ($"雪球 {unit.Frozen} → {result.Snow}", "forecast-effect");
             else if (result.Poison != unit.Poison)
                 (label, style) = ($"中毒 {unit.Poison} → {result.Poison}", "forecast-effect");
+            else if (result.PoisonOnAttack != unit.PoisonOnAttack)
+                (label, style) = ($"攻击施毒 {unit.PoisonOnAttack} → {result.PoisonOnAttack}", "forecast-effect");
             else if (result.Corruption != unit.Corruption)
                 (label, style) = ($"腐化 {unit.Corruption} → {result.Corruption}", "forecast-effect");
             else if (result.Period != unit.Period)
@@ -1018,7 +1020,7 @@ namespace Frostline
                 ? $" · 受单位攻击后存活时，以 {unit.CounterattackPower} 攻击反击{(unit.Pattern == AttackPattern.AllEnemies ? "全体敌军" : "攻击者")}，保留当前倒计时"
                 : "";
             string ability = (type.Ability.Effect == EffectKind.None ? "" :
-                " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern)) + poisonAttack;
+                " · " + type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern, unit.Health)) + poisonAttack;
             string resistance = type.ResistSnow ? " · 最多承受 1 层雪球" : "";
             string summon = type.Summon ? " · 召唤：不能召回，阵亡后回到弃牌堆并恢复满生命" : "";
             string enemySide = type.DeployOnEnemy ? " · 部署在敌方空位，算作敌方单位，必须击倒才能过关" : "";
@@ -1147,7 +1149,7 @@ namespace Frostline
                 string party = $"{route.Loadout.Captain.Name}与{route.Companion.Name}携带 {route.DeckCount} 张卡牌。";
                 resultDetail.text = route.Stage < route.StageCount
                     ? party + (route.RecruitCompanions ? "胜利后招募一名随从并获得挂坠。" : "胜利后获得一张新牌和一枚挂坠。")
-                    : party + "选择最后一战。";
+                    : party + $"选择本次远征的第 {route.Stage} 战。";
                 for (int i = 0; i < route.EncounterChoices.Count; i++)
                 {
                     int index = i;
@@ -1966,8 +1968,6 @@ namespace Frostline
                 tags.Add(Icon("resist", "resist-icon"));
             if (unit.HasCounterattack)
                 tags.Add(Text(type.Counterattack ? "反击" : $"反击 {unit.CounterattackPower}", "trait"));
-            if (unit.PoisonOnAttack > 0)
-                tags.Add(Text($"攻击后毒 +{unit.PoisonOnAttack}", "trait"));
             if (type.Summon)
                 tags.Add(Text("召唤", "trait"));
             if (type.DeployOnEnemy)
@@ -1990,6 +1990,7 @@ namespace Frostline
                     EffectKind.JunkPower => $"+{unit.Attack}",
                     EffectKind.RecycleDraw => $"摧毁手中垃圾牌，每张抽 {type.Ability.Amount + unit.AbilityBonus} 张",
                     EffectKind.SelfAttack => $"自身 {unit.Attack}",
+                    EffectKind.HealthAttackUp => $"攻击 +{type.Ability.CurrentAmount(unit.AbilityBonus, unit.Health)}（当前生命）",
                     EffectKind.DamageVsLowerHealth => $"×{type.Ability.Amount + unit.AbilityBonus}",
                     EffectKind.HurtForFrenzy => $"生命 −{type.Ability.Amount + unit.AbilityBonus} / 狂热 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
                     EffectKind.MaxCountdownUp => $"计数 +{type.Ability.Amount + unit.AbilityBonus} / 攻击 +{type.Ability.SecondaryAmount + unit.AbilityBonus}",
@@ -2007,6 +2008,8 @@ namespace Frostline
                     EffectKind.TerrainDetox => $"吸毒 {type.Ability.Amount + unit.AbilityBonus} · 每层回 1 血",
                     EffectKind.TriggerAttack => "攻击",
                     EffectKind.RowBlast => $"同排 {type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.PoisonAttack => $"攻击施毒 +{type.Ability.Amount + unit.AbilityBonus}",
+                    EffectKind.OverloadDamage => "过载伤害 · 层数减半",
                     EffectKind.AttackDown => $"−{type.Ability.Amount + unit.AbilityBonus}",
                     _ => $"+{type.Ability.Amount + unit.AbilityBonus}"
                 };

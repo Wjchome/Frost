@@ -12,25 +12,41 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aaca6811335594793ff8e856b62c3f1, type: 3}
   m_Name: Ridge
   m_EditorClassIdentifier:
-  displayName: "白脊风口"
+  displayName: "白脊菌园"
   landscape: {fileID: 2800000, guid: e99354a7aaf148f0b0833e3000e62542, type: 3}
-  briefing: "雪卷卷会反击。雪伯伯远射施加雪球，雪吞吞借雪球加攻。"
-  reinforcementInterval: 3
+  briefing: "雪虫虫攻击前按当前生命加攻，麻可可每拍出手并逐次加攻。护心菇治疗虫虫，末波雪伯伯给全队加血。"
+  reinforcementInterval: 5
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: a3ce9b47482a5dfa86fba08bdaf2f094, type: 2}
+    - unit: {fileID: 11400000, guid: 46d97c29823a5074b184ebaf0ffeba20, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: c41bd3222b105248872792d86ad63667, type: 2}
+    - unit: {fileID: 11400000, guid: 43473e873b3e479b9ba306794f923e5a, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
       row: 2
   - enemies:
+    - unit: {fileID: 11400000, guid: 46d97c29823a5074b184ebaf0ffeba20, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 43473e873b3e479b9ba306794f923e5a, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
+      row: 2
+  - enemies:
+    - unit: {fileID: 11400000, guid: 46d97c29823a5074b184ebaf0ffeba20, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 43473e873b3e479b9ba306794f923e5a, type: 2}
+      row: 1
     - unit: {fileID: 11400000, guid: f8d5116d59f25b76883aea7041507c31, type: 2}
       row: 1
-    - unit: {fileID: 11400000, guid: 325c8a9dd19d5b4981f882fad18da74a, type: 2}
+    - unit: {fileID: 11400000, guid: ec2ddd15792252fbb49cdbb32a17b3a6, type: 2}
       row: 2
-  - enemies:
-    - unit: {fileID: 11400000, guid: cb3bf33625e55a37813c4f5a778f20ee, type: 2}
-      row: 1
-    - unit: {fileID: 11400000, guid: 59406857e0e1561d9bf5b5ced45cb848, type: 2}
+    - unit: {fileID: 11400000, guid: 5ddd5e12bcca58c8874fdb2bcb900a0d, type: 2}
       row: 2
   pendantReward: 1
   rewardCards: []

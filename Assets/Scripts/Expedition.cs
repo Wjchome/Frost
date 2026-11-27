@@ -9,7 +9,7 @@ namespace Frostline
     public enum BattleEffect { Windup, Attack, Ice, Recovery, Arrival, Guard, Status, Burst, Retaliation, Burning }
     public enum AttackPattern { Front, Barrage, Longshot, Aimless, Support, AllEnemies }
     public enum EffectTrigger { Deploy, Hit, Kill, WhenHit, Act, WhileActive, AllyKill, Death, WhenJunkHit, SnowApplied, CardDestroyed, WhileWounded, Attack, TurnEnd,
-        WhenAttacked, AllySacrificed, TerrainCreated, TerrainTurnStart }
+        WhenAttacked, AllySacrificed, TerrainCreated, TerrainTurnStart, BeforeAttack }
     public enum EffectKind { None, Heal, Shell, Snow, Spice, Overload, Ink, Weakness, Block, EffectBonus, Thorns, Burn, AttackGrowth, Exposed, HealthGrowth,
         AttackUp, Frenzy, Aimless, Barrage, Countdown, MaxCountdown, Draw, Junk, RecycleDraw, RandomStat, JunkPower, Cleanse, Hurt,
         Retaliate, TeamSpice, AttackDown, StickyFruit, BattleHealthUp, BattleHealthDown, MaxCountdownUp, Poison, SnowOnBlock,
@@ -19,7 +19,7 @@ namespace Frostline
         TerrainTransfer, TerrainCannon, TerrainPoison, TerrainGambit, TerrainDetox,
         TerrainAttackUp, TerrainAttackDown, TerrainTemporaryAttack, TerrainFrenzy, TerrainSwap,
         HalfCounterattack, TemporaryAttack, PoisonBurst, PoisonAttack, GroundPoison, PoisonTreatment,
-        TerrainWeakness, TerrainSpice }
+        TerrainWeakness, TerrainSpice, HealthAttackUp }
     public enum CardTarget { Enemy, Ally, Either, AllEnemies, AllAllies, HealthyEnemies, None, AllUnits, RandomAlly, RandomEnemy, SacrificeAlly,
         EmptySlot, Tile, AllTiles }
     public enum JunkOperation { None, DoubleAndStrike, Recycle, BuffAttack, BuffFrenzy }
@@ -72,6 +72,7 @@ namespace Frostline
             EffectTrigger.CardDestroyed => "卡牌摧毁",
             EffectTrigger.WhileWounded => "每个回合受伤状态触发",
             EffectTrigger.Attack => "每次攻击后",
+            EffectTrigger.BeforeAttack => "每次攻击前",
             EffectTrigger.TerrainCreated => "生成格子效果时",
             EffectTrigger.TerrainTurnStart => "回合开始时",
             EffectTrigger.TurnEnd => "每回合结束时",
@@ -80,7 +81,10 @@ namespace Frostline
             _ => ""
         };
 
-        public string Describe(int bonus, int? attack = null, AttackPattern pattern = AttackPattern.Front)
+        public int CurrentAmount(int bonus, int? health = null) =>
+            (Amount + bonus) * (Effect == EffectKind.HealthAttackUp ? health ?? 0 : 1);
+
+        public string Describe(int bonus, int? attack = null, AttackPattern pattern = AttackPattern.Front, int? health = null)
         {
             int amount = Amount + bonus;
             string timing = Trigger switch
@@ -96,6 +100,10 @@ namespace Frostline
                     return $"援护时，让同排最前的另一名友军获得 {amount} 点护壳";
                 if (Effect == EffectKind.Heal)
                     return $"援护时，让同排最前的另一名友军恢复 {amount} 点生命";
+                if (Effect == EffectKind.Spice)
+                    return $"援护时，让同排最前的另一名友军获得 {amount} 层辣椒";
+                if (Effect == EffectKind.PoisonAttack)
+                    return $"援护时，让同排最前的另一名友军本场每次攻击后额外施加 {amount} 层中毒，可叠加";
             }
             switch (Effect)
             {
@@ -112,6 +120,10 @@ namespace Frostline
                 case EffectKind.SnowOnBlock: return $"{timing}给全体敌人各施加 {amount} 层雪球。拥有反击时，任一单位消耗格挡也会触发一次反击";
                 case EffectKind.MaxCountdownUp: return $"{timing}，本场自身最大倒计时 +{amount}，攻击 +{SecondaryAmount + bonus}";
                 case EffectKind.SelfAttack: return "每次攻击后，按这次攻击的攻击力攻击自己";
+                case EffectKind.HealthAttackUp:
+                    return health.HasValue
+                        ? $"每次攻击前，自身本场攻击 +{CurrentAmount(bonus, health)}（当前生命 ×{amount}），可叠加"
+                        : $"每次攻击前，自身本场攻击增加当前生命的 {amount} 倍，可叠加";
                 case EffectKind.TeamHealth: return $"{timing}，其他友军本场最大生命和当前生命 +{amount}";
                 case EffectKind.WeakenRow: return $"{timing}，给整排友军（包括自己）施加 {amount} 层虚弱";
                 case EffectKind.AbsorbRow: return $"{timing}，从同排每名其他友军吸收至多 {amount} 点攻击和最大生命（友军至少保留 1 点最大生命），自身增加实际吸收值";
@@ -137,6 +149,8 @@ namespace Frostline
                     return $"在场上时，所有召唤友军攻击 +{amount}，最大生命和生命 +{SecondaryAmount + bonus}";
                 case EffectKind.TriggerAttack: return $"{timing}，立即攻击一次";
                 case EffectKind.RowBlast: return $"{timing}，对同排其他单位各造成 {amount} 点伤害";
+                case EffectKind.OverloadDamage:
+                    return $"{timing}，对命中的目标额外造成等同于其当前过载层数的伤害，然后其过载减半（向下取整）";
             }
             if (Trigger == EffectTrigger.WhenAttacked)
                 return $"被单位攻击时（即使阵亡），给攻击者施加 {amount} 层{Effects.Name(Effect)}";
@@ -173,7 +187,7 @@ namespace Frostline
     {
         public static bool AppliesToAttackTargets(EffectKind effect) =>
             effect is EffectKind.Snow or EffectKind.Overload or EffectKind.Ink or EffectKind.Weakness or
-                EffectKind.Burn or EffectKind.Exposed or EffectKind.Poison or EffectKind.Corruption;
+                EffectKind.Burn or EffectKind.Exposed or EffectKind.Poison or EffectKind.Corruption or EffectKind.OverloadDamage;
 
         public static string Name(EffectKind effect) => effect switch
         {
@@ -219,7 +233,7 @@ namespace Frostline
             EffectKind.AbsorbRow => "吸收",
             EffectKind.HurtForFrenzy => "狂热",
             EffectKind.ExtraAllyTick => "额外行动",
-            EffectKind.DamageVsLowerHealth or EffectKind.SelfAttack => "攻击",
+            EffectKind.DamageVsLowerHealth or EffectKind.SelfAttack or EffectKind.HealthAttackUp => "攻击",
             EffectKind.CountdownUp => "倒计时",
             EffectKind.SnowAndAttackUp => "雪球",
             EffectKind.DrainAlly => "生命",
@@ -237,6 +251,7 @@ namespace Frostline
             EffectKind.MutualOverload => "过载",
             EffectKind.OverloadDamage => "过载伤害",
             EffectKind.PermanentJunk => "永久垃圾",
+            EffectKind.PoisonAttack => "攻击施毒",
             EffectKind.HalfCounterattack => "反伤",
             EffectKind.TerrainWeakness => "格子虚弱",
             EffectKind.TerrainSpice => "格子辣椒",
@@ -246,7 +261,8 @@ namespace Frostline
         public static string Rule(EffectKind effect) => effect switch
         {
             EffectKind.Spice => "每层使攻击 +1，打完整次攻击后清除。",
-            EffectKind.Overload or EffectKind.MutualOverload or EffectKind.OverloadDamage => "过载层数达到当前生命时引爆，对自身和同排队友造成等量伤害。",
+            EffectKind.Overload or EffectKind.MutualOverload => "过载层数达到当前生命时引爆，对自身和同排队友造成等量伤害。",
+            EffectKind.OverloadDamage => "造成等同于目标当前过载层数的伤害，然后其过载减半（向下取整）。",
             EffectKind.Ink => "停用触发能力，每回合结束减少 1 层。",
             EffectKind.Weakness => "每层使攻击 −1（最低为 0），打完整次攻击后清除。",
             EffectKind.Block => "每层抵消一次伤害，先于护壳消耗。",
@@ -255,6 +271,7 @@ namespace Frostline
             EffectKind.Burn => "回合末受到等同层数的伤害，再减少 1 层。",
             EffectKind.Exposed => "下次未被格挡的伤害加上当前层数，然后清空易伤。护壳照常吸收伤害。",
             EffectKind.Poison => "回合末受到等同于层数的伤害，先扣格挡，再扣护壳，最后扣生命，然后中毒减少 1 层。",
+            EffectKind.PoisonAttack => "每次攻击后，对命中的目标额外施加当前数值的中毒，可叠加；墨水停用此效果，离场后失去。",
             EffectKind.TerrainPoison => "格子毒在回合末减少 1 层；有单位站在上面时，按衰减前的层数造成伤害，先扣格挡，再扣护壳。空格只减层数。",
             EffectKind.TemporaryAttack or EffectKind.TerrainTemporaryAttack => "临时攻击增加伤害，每回合结束减少 1 点，施加当回合也会衰减；格子临时攻击在空格上也会衰减。",
             EffectKind.HalfCounterattack => "反伤值为当前攻击的一定比例，向下取整，随攻击变化；受单位攻击后存活时，对攻击者造成反伤伤害。",
@@ -658,7 +675,7 @@ namespace Frostline
     {
         public readonly Position Origin;
         public readonly Position? Destination;
-        public readonly int Health, Shell, Block, Snow, Attack, Poison, Corruption, Period, Counter, Frenzy, AbilityBonus, MaxHealth, Thorns, PermanentJunk;
+        public readonly int Health, Shell, Block, Snow, Attack, Poison, PoisonOnAttack, Corruption, Period, Counter, Frenzy, AbilityBonus, MaxHealth, Thorns, PermanentJunk;
 
         public bool Defeated => !Destination.HasValue;
 
@@ -670,6 +687,7 @@ namespace Frostline
             (Poison, Period, Counter, Frenzy, AbilityBonus, MaxHealth) =
                 (unit.Poison, unit.Period, unit.Counter, unit.Frenzy, unit.AbilityBonus, unit.MaxHealth);
             Corruption = unit.Corruption;
+            PoisonOnAttack = unit.PoisonOnAttack;
             Thorns = unit.TotalThorns;
             PermanentJunk = unit.PermanentJunk;
         }
@@ -790,7 +808,9 @@ namespace Frostline
                 hand.Add(companion);
                 Notice = "免费部署队长和随从，随后抽取开局手牌。";
             }
-            foreach (Position _ in PlaceEnemies(location.UnitsInWave(1))) { }
+            string openingNotice = Notice;
+            foreach (BattleBeat _ in PlaceEnemies(location.UnitsInWave(1))) { }
+            Notice = openingNotice;
         }
 
         public Unit At(Position pos) => pos.Valid ? board[pos.Enemy ? 1 : 0, pos.Row, pos.Slot] : null;
@@ -817,7 +837,9 @@ namespace Frostline
             if (!CanAddTestEnemy(type, pos))
                 return false;
 
-            Set(pos, new Unit(type));
+            var deployed = new Unit(type);
+            Set(pos, deployed);
+            foreach (BattleBeat _ in TriggerAbility(pos, pos, deployed, EffectTrigger.Deploy)) { }
             Notice = $"已将「{type.Name}」加入敌方{(pos.Row == 0 ? "上" : "下")}排第 {pos.Slot + 1} 格。";
             return true;
         }
@@ -1305,6 +1327,10 @@ namespace Frostline
                         previousTerrainAttack = BeginTerrainAttack(source, attacker);
                         terrainAttackStarted = true;
                     }
+                    foreach (BattleBeat effect in TriggerAbility(source, source, attacker, EffectTrigger.BeforeAttack))
+                        yield return effect;
+                    if (Phase == BattlePhase.Lost || At(source) != attacker)
+                        yield break;
                     attacked = true;
                     if (!counterattack && attacker.Pattern == AttackPattern.Aimless && targets.Count > 1)
                         targets = new[] { targets[RollTarget(targets.Count)] };
@@ -1570,6 +1596,8 @@ namespace Frostline
             if (ability.Effect == EffectKind.Snow && trigger == EffectTrigger.WhenHit && source.Equals(target))
                 return Array.Empty<BattleBeat>();
             int amount = (ability.Amount + unit.AbilityBonus) * times;
+            if (ability.Effect == EffectKind.HealthAttackUp)
+                return ApplyEffect(source, source, EffectKind.AttackUp, ability.CurrentAmount(unit.AbilityBonus, unit.Health) * times);
             if (ability.Effect == EffectKind.DamageVsLowerHealth)
                 return Array.Empty<BattleBeat>();
             if (ability.Effect is EffectKind.MaxCountdownUp or EffectKind.TeamHealth or EffectKind.WeakenRow or
@@ -1894,18 +1922,21 @@ namespace Frostline
             ++Wave;
             Reinforcements = Location.WaveInterval;
             Notice = $"第 {Wave} 波敌人抵达。";
-            foreach (Position position in PlaceEnemies(units))
-                yield return new BattleBeat(position, position, BattleEffect.Arrival, "增援");
+            foreach (BattleBeat beat in PlaceEnemies(units))
+                yield return beat;
         }
 
-        private IEnumerable<Position> PlaceEnemies(IReadOnlyList<EnemySpawn> enemies)
+        private IEnumerable<BattleBeat> PlaceEnemies(IReadOnlyList<EnemySpawn> enemies)
         {
             foreach (EnemySpawn enemy in enemies)
             {
                 if (EmptySlot(true, enemy.Row) is not Position position)
                     throw new InvalidOperationException("The encounter schedules more enemies than there are slots.");
-                Set(position, new Unit(enemy.Unit));
-                yield return position;
+                var deployed = new Unit(enemy.Unit);
+                Set(position, deployed);
+                yield return new BattleBeat(position, position, BattleEffect.Arrival, "增援");
+                foreach (BattleBeat beat in TriggerAbility(position, position, deployed, EffectTrigger.Deploy))
+                    yield return beat;
             }
         }
 

@@ -16,12 +16,14 @@ MonoBehaviour:
   catalogGroup: "敌人"
   portrait: {fileID: 2800000, guid: 8a7664bce65e3ba43b9d252d731a41bd, type: 3}
   action: 0
-  health: 5
-  power: 2
+  health: 6
+  power: 3
   period: 4
   frenzy: 1
   pattern: 0
   resistSnow: 0
-  trigger: 11
-  abilityEffect: 15
-  abilityAmount: 2
+  trigger: 0
+  abilityEffect: 0
+  abilityAmount: 0
+  counterattack: 0
+  abilitySecondaryAmount: 0

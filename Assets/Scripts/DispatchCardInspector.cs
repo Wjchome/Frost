@@ -102,7 +102,7 @@ namespace Frostline
                 cardInspector.Add(Text($"生命 {unit.Health}/{unit.MaxHealth}   攻击 {(unit.Type.Passive ? "—" : unit.Attack.ToString())}" +
                     (unit.Period > 0 ? $"   倒计时 {unit.Counter}/{unit.Period}" : ""), "inspector-vitals"));
                 string ability = unit.Type.Ability.Effect == EffectKind.None ? "" :
-                    unit.Type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern);
+                    unit.Type.Ability.Describe(unit.AbilityBonus, unit.Attack, unit.Pattern, unit.Health);
                 if (ability.Length > 0)
                     cardInspector.Add(Text(ability, "inspector-description"));
                 if (unit.Type.Summon)

@@ -82,6 +82,11 @@ namespace Frostline
 
             var routeStages = stages.Select(stage => new RouteStage(stage.title,
                 stage.encounters.Select(ReadEncounter).ToArray(), stage.recruitCompanions)).ToArray();
+            // Only enemies scheduled on the current route belong in the codex and GM list.
+            // Older enemy assets and workbook rows may remain available for future encounters.
+            var encounterEnemies = stages.SelectMany(stage => stage.encounters).SelectMany(site => site.waves)
+                .SelectMany(wave => wave.enemies).Select(enemy => ReadEntry(enemy.unit)).Distinct().ToArray();
+            var activeEnemyCards = new HashSet<Card>(encounterEnemies.Select(entry => entry.Card));
             var startingCompanions = companions.Select(ReadUnit).ToArray();
             if (!useFactions)
             {
@@ -140,7 +145,8 @@ namespace Frostline
             }
 
             return new DispatchRoute(Array.Empty<StartingLoadout>(), startingCompanions, routeStages, routeFactions, shared,
-                catalog: catalogCards.Select(ReadEntry).Concat(additions)
+                catalog: catalogCards.Select(ReadEntry).Concat(additions).Concat(encounterEnemies)
+                    .Where(entry => entry.Group != "敌人" || activeEnemyCards.Contains(entry.Card))
                     .Select(entry => (entry.Group, entry.Card)).Distinct().ToArray(),
                 sharedItems: sharedItems.Select(ReadCard).Concat(ExtraPool("通用", false)).Distinct().ToArray(),
                 junk: junkCard == null ? null : ReadCard(junkCard),

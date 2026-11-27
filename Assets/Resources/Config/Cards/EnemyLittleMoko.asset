@@ -17,11 +17,13 @@ MonoBehaviour:
   portrait: {fileID: 2800000, guid: ca33617e4a3502742be6ba9716bca769, type: 3}
   action: 0
   health: 6
-  power: 1
-  period: 2
+  power: 3
+  period: 4
   frenzy: 1
   pattern: 0
   resistSnow: 0
-  trigger: 4
-  abilityEffect: 15
-  abilityAmount: 1
+  trigger: 0
+  abilityEffect: 0
+  abilityAmount: 0
+  counterattack: 0
+  abilitySecondaryAmount: 0

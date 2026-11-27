@@ -14,21 +14,28 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   displayName: "沉钟驿站"
   landscape: {fileID: 2800000, guid: a66d3d75571a4be4bbc6894f2658292d, type: 3}
-  briefing: "先面对鹅和鹅盾盾，最后处理企鹅团的三连击。"
-  reinforcementInterval: 4
+  briefing: "鹅盾盾受击成长，快快给全队加攻。末波企鹅团三连击，先拆3血快快可以一次压低多段伤害。"
+  reinforcementInterval: 6
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
+    - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
       row: 1
     - unit: {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
       row: 2
   - enemies:
     - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
       row: 1
+    - unit: {fileID: 11400000, guid: e6e52a6cb2405b048d41e2563e8714a1, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
+      row: 2
     - unit: {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
       row: 2
-  - enemies:
-    - unit: {fileID: 11400000, guid: 128f39a669f05e5785ce29047f17d821, type: 2}
-      row: 1
+    - unit: {fileID: 11400000, guid: ba237594202a57cfa62f1fce25b81c9d, type: 2}
+      row: 2
   pendantReward: 2
   rewardCards: []

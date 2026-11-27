@@ -12,23 +12,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3aaca6811335594793ff8e856b62c3f1, type: 3}
   m_Name: Watchtower
   m_EditorClassIdentifier:
-  displayName: "风站哨塔"
+  displayName: "孢雾哨塔"
   landscape: {fileID: 2800000, guid: 3b18c57d70d547f69c4e49741f06d2fc, type: 3}
-  briefing: "大黏黏受击送出黏黏水果，卡牌被摧毁时粘粘加攻。"
-  reinforcementInterval: 4
+  briefing: "催毒师强化孢子投手，黏团挡住集火路线；大黏黏留下格子毒。末波瘴雾巨菇横扫施毒，控制辅助并分排承伤。"
+  reinforcementInterval: 5
   waves:
   - enemies:
-    - unit: {fileID: 11400000, guid: 7f27f127df2d50e1b1aef573d135e270, type: 2}
+    - unit: {fileID: 11400000, guid: be3160e6299945d098c370e5d9ac8980, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: dd5644353227464581302d61d96d521d, type: 2}
       row: 1
     - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
       row: 1
-  - enemies:
-    - unit: {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
-      row: 1
-    - unit: {fileID: 11400000, guid: e81db3a193275da7a8357f37d0ba0751, type: 2}
+    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
       row: 2
   - enemies:
-    - unit: {fileID: 11400000, guid: 46d97c29823a5074b184ebaf0ffeba20, type: 2}
+    - unit: {fileID: 11400000, guid: be3160e6299945d098c370e5d9ac8980, type: 2}
       row: 1
-  pendantReward: 3
+    - unit: {fileID: 11400000, guid: dd5644353227464581302d61d96d521d, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
+      row: 2
+  - enemies:
+    - unit: {fileID: 11400000, guid: be3160e6299945d098c370e5d9ac8980, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: dd5644353227464581302d61d96d521d, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+      row: 1
+    - unit: {fileID: 11400000, guid: be6318538c3044ed80b7f9c9d7a05262, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: ff8321c82e045007948bdd3afadf62ca, type: 2}
+      row: 2
+    - unit: {fileID: 11400000, guid: 72e9f900c39855dd8017afa715d19610, type: 2}
+      row: 2
+  pendantReward: 0
   rewardCards: []

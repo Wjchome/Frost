@@ -25,3 +25,5 @@ MonoBehaviour:
   trigger: 0
   abilityEffect: 0
   abilityAmount: 0
+  counterattack: 0
+  abilitySecondaryAmount: 0
